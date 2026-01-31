@@ -1,6 +1,5 @@
-import os
-import time
-import resend
+import os, time, resend
+
 from typing import List
 from dotenv import load_dotenv
 
@@ -16,12 +15,11 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 MAX_RETRIES = 3
 RETRY_DELAYS = [1, 2, 4]  # Exponential backoff: 1s, 2s, 4s
 
-def sanitize(string: str) -> str:
+def sanitize(name: str) -> str:
     """
     Convert string to lowercase and replace spaces with hyphens.
     """
-    return string.lower().replace(" ", "-")
-
+    return name.lower().replace(" ", "-")
 
 def send_mail(mail: Mail):
     """
@@ -37,10 +35,11 @@ def send_mail(mail: Mail):
         Exception: If all retry attempts fail.
     """
     params: resend.Emails.SendParams = {
-        "from": f"{mail.sender} <{sanitize(mail.sender)}@resend.dev>",
+        "from": f"{mail.sender.name} <{sanitize(mail.sender.name)}@resend.dev>",
         "to": [mail.to],
         "subject": mail.subject,
         "html": mail.body,
+        "reply_to": mail.sender.email
     }
 
     last_exception = None
@@ -83,10 +82,11 @@ def send_mail_batch(mails: List[Mail]):
 
     for mail in mails:
         params.append({
-            "from": f"{mail.sender} <{sanitize(mail.sender)}@resend.dev>",
+            "from": f"{mail.sender.name} <{sanitize(mail.sender.name)}@resend.dev>",
             "to": [mail.to],
             "subject": mail.subject,
             "html": mail.body,
+            "reply_to": mail.sender.email
         })
 
     last_exception = None
