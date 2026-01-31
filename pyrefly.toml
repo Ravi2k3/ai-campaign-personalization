@@ -1,0 +1,29 @@
+# Pyrefly Configuration - LSP Mode
+# This configuration enables Pyrefly as a Language Server for type checking
+
+# Set the directories Pyrefly will search for files to type check
+project-includes = [
+    "backend/**/*.py",
+    "backend/**/*.pyi"
+]
+
+# Set the Python platform for type checking
+python-platform = "win32"
+
+# Python version (adjust if needed)
+python-version = "3.12"
+
+# Search paths for module resolution
+search-paths = [
+    "backend",
+    "backend/src"
+]
+
+# Enable type errors to display in the IDE
+disable-type-errors-in-ide = false
+
+# A table mapping error codes to severity/enabled status
+[errors]
+# You can disable specific errors if needed
+# bad-assignment = false
+# bad-return = false

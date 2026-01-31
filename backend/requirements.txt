@@ -1,0 +1,5 @@
+moonlight-ai 
+python-dotenv 
+fastapi[standard] 
+psycopg2
+pydantic
