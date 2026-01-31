@@ -1,6 +1,4 @@
-import os
-import logging
-import axiom_py
+import os, logging, axiom_py
 from axiom_py.logging import AxiomHandler
 from dotenv import load_dotenv
 
@@ -26,12 +24,12 @@ def setup_logger(name: str = "app") -> logging.Logger:
     
     # Axiom handler (cloud) - only if token is configured
     axiom_token = os.getenv("AXIOM_TOKEN")
-    axiom_dataset = os.getenv("AXIOM_DATASET", "mail-app")
+    axiom_dataset = os.getenv("AXIOM_DATASET")
     
     if axiom_token:
         try:
             client = axiom_py.Client(axiom_token)
-            axiom_handler = AxiomHandler(client, axiom_dataset)
+            axiom_handler = AxiomHandler(client, axiom_dataset) # type: ignore
             axiom_handler.setLevel(logging.INFO)
             logger.addHandler(axiom_handler)
             logger.info(f"Axiom logging enabled for dataset: {axiom_dataset}")
