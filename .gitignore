@@ -84,3 +84,4 @@ ENV/
 *.temp
 .vercel
 .netlify
+pyrefly.toml

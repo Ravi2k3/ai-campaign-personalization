@@ -3,3 +3,5 @@ python-dotenv
 fastapi[standard] 
 psycopg2
 pydantic
+axiom-py
+resend
