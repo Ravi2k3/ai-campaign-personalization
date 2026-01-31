@@ -12,6 +12,13 @@ This application enables users to:
 - **Automated Follow-ups** – Schedule and send follow-up emails based on configurable wait periods
 - **Reply Tracking** – Mark leads as replied (simulated button or webhook-based)
 
+## Design Principles
+
+- Ship a polished core before adding features
+- Prefer boring, reliable infrastructure
+- Optimize for demoability and clarity
+- Avoid background magic that’s hard to explain
+
 ## Tech Stack
 
 | Layer | Technology | Purpose |
@@ -21,26 +28,40 @@ This application enables users to:
 | Backend | Python (FastAPI) | REST API |
 | Database | Supabase (Postgres) | Data persistence + real-time |
 | Email | Resend | Transactional email delivery |
-| LLM | Moonlight-AI | AI-powered email personalization |
+| LLM | OpenAI-compatible LLM | AI-powered email personalization |
 
 ## Architecture
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│   Supabase   │
-│  React/Vite  │     │   FastAPI    │     │   Postgres   │
-└──────────────┘     └──────┬───────┘     └──────────────┘
-                            │
-            ┌───────────────┼───────────────┐
-            ▼               ▼               ▼
-      ┌──────────┐    ┌────────────┐  ┌────────────┐
-      │  Resend  │    │  Moonlight │  │ Cron       │
-      │  (Email) │    │   (LLM)    │  │ (Scheduler)│
-      └──────────┘    └────────────┘  └────────────┘
+```mermaid
+flowchart LR
+    subgraph Client
+        FE[Frontend<br/>React + Vite]
+    end
+
+    subgraph Server
+        BE[Backend<br/>FastAPI]
+    end
+
+    subgraph External
+        DB[(Supabase<br/>Postgres)]
+        EMAIL[Resend<br/>Email API]
+        LLM[Moonlight<br/>LLM API]
+    end
+
+    subgraph Background
+        CRON[Scheduler<br/>Worker]
+    end
+
+    FE --> BE
+    BE --> DB
+    BE --> EMAIL
+    BE --> LLM
+    CRON --> DB
+    CRON --> EMAIL
 ```
 
 ### Scheduling Strategy
-- Single cron job polls the database every minute
+- A lightweight background worker polls the database every minute
 - Queries for pending follow-ups where `scheduled_at <= NOW()` and `has_replied = false`
 - Sends all due emails in batch, updates status
 
