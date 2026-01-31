@@ -13,12 +13,16 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 
 # Retry configuration
 MAX_RETRIES = 3
+
+# Ensure that this is length of MAX_RETRIES and values are in seconds
 RETRY_DELAYS = [1, 2, 4]  # Exponential backoff: 1s, 2s, 4s
 
+# Check if the length of RETRY_DELAYS is equal to MAX_RETRIES
+if len(RETRY_DELAYS) != MAX_RETRIES:
+    raise ValueError("RETRY_DELAYS must be of length MAX_RETRIES")
+
 def sanitize(name: str) -> str:
-    """
-    Convert string to lowercase and replace spaces with hyphens.
-    """
+    # Convert string to lowercase and replace spaces with hyphens.
     return name.lower().replace(" ", "-")
 
 def send_mail(mail: Mail):
@@ -46,23 +50,19 @@ def send_mail(mail: Mail):
     
     for attempt in range(MAX_RETRIES):
         try:
-            logger.info(f"Sending email to {mail.to} (attempt {attempt + 1}/{MAX_RETRIES})")
-            email = resend.Emails.send(params)
-            logger.info(f"Email sent successfully to {mail.to}, id: {email.id if hasattr(email, 'id') else 'N/A'}")
-            return email
+            return resend.Emails.send(params)
         except Exception as e:
             last_exception = e
             logger.warning(
-                f"Email send failed on attempt {attempt + 1}/{MAX_RETRIES}: {str(e)}"
+                f"Email send to {mail.to} failed (attempt {attempt + 1}/{MAX_RETRIES}): {str(e)}"
             )
             
             # Don't sleep after the last attempt
             if attempt < MAX_RETRIES - 1:
-                delay = RETRY_DELAYS[attempt]
-                logger.info(f"Retrying in {delay} seconds...")
-                time.sleep(delay)
+                time.sleep(RETRY_DELAYS[attempt])
     
     logger.error(f"Email send failed after {MAX_RETRIES} attempts to {mail.to}: {str(last_exception)}")
+
     raise last_exception  # type: ignore
 
 def send_mail_batch(mails: List[Mail]):
@@ -91,24 +91,20 @@ def send_mail_batch(mails: List[Mail]):
 
     last_exception = None
     recipients = [m.to for m in mails]
-    
+
     for attempt in range(MAX_RETRIES):
         try:
-            logger.info(f"Sending batch email to {len(mails)} recipients (attempt {attempt + 1}/{MAX_RETRIES})")
-            email = resend.Batch.send(params)
-            logger.info(f"Batch email sent successfully to {len(mails)} recipients")
-            return email
+            return resend.Batch.send(params)
         except Exception as e:
             last_exception = e
             logger.warning(
-                f"Batch email send failed on attempt {attempt + 1}/{MAX_RETRIES}: {str(e)}"
+                f"Batch email send failed (attempt {attempt + 1}/{MAX_RETRIES}): {str(e)}"
             )
             
             # Don't sleep after the last attempt
             if attempt < MAX_RETRIES - 1:
-                delay = RETRY_DELAYS[attempt]
-                logger.info(f"Retrying in {delay} seconds...")
-                time.sleep(delay)
+                time.sleep(RETRY_DELAYS[attempt])
     
     logger.error(f"Batch email send failed after {MAX_RETRIES} attempts to {recipients}: {str(last_exception)}")
+
     raise last_exception  # type: ignore

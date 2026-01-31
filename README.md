@@ -47,6 +47,7 @@ flowchart LR
         DB[(Supabase<br/>Postgres)]
         EMAIL[Resend<br/>Email API]
         LLM[Moonlight<br/>LLM API]
+        LOG[Axiom<br/>Cloud Logging]
     end
 
     subgraph Background
@@ -57,8 +58,10 @@ flowchart LR
     BE --> DB
     BE --> EMAIL
     BE --> LLM
+    BE -.-> LOG
     CRON --> DB
     CRON --> EMAIL
+    CRON -.-> LOG
 ```
 
 ### Scheduling Strategy
