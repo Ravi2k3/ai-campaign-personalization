@@ -1,8 +1,10 @@
-import os
-import asyncio
+import os, asyncio
+
 from textwrap import dedent
 from dotenv import load_dotenv
+
 from moonlight import Agent, Provider, Content
+
 from .base import PersonalizedMessage
 from ..logger import logger
 
@@ -31,13 +33,6 @@ Make sure to keep it friendly and engaging. Ensure to not use em-dashes or markd
 Make sure to return the body of the email in html format so the email looks clean.
 """)
 
-agent = Agent(
-    provider=provider,
-    model=MODEL,
-    output_schema=PersonalizedMessage,
-    system_role=agent_role
-)
-
 async def generate_mail(
     user_info: dict
 ) -> PersonalizedMessage:
@@ -53,6 +48,13 @@ async def generate_mail(
     Raises:
         Exception: If all retry attempts fail.
     """
+    agent = Agent(
+        provider=provider,
+        model=MODEL,
+        output_schema=PersonalizedMessage,
+        system_role=agent_role
+    )
+    
     agent_prompt = Content(
         text=dedent(f"""
         Here is the information about the user:

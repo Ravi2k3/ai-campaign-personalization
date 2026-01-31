@@ -16,6 +16,12 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 MAX_RETRIES = 3
 RETRY_DELAYS = [1, 2, 4]  # Exponential backoff: 1s, 2s, 4s
 
+def sanitize(string: str) -> str:
+    """
+    Convert string to lowercase and replace spaces with hyphens.
+    """
+    return string.lower().replace(" ", "-")
+
 
 def send_mail(mail: Mail):
     """
@@ -31,7 +37,7 @@ def send_mail(mail: Mail):
         Exception: If all retry attempts fail.
     """
     params: resend.Emails.SendParams = {
-        "from": f"{mail.sender.name} <{mail.sender.email}>",
+        "from": f"{mail.sender} <{sanitize(mail.sender)}@resend.dev>",
         "to": [mail.to],
         "subject": mail.subject,
         "html": mail.body,
@@ -60,7 +66,6 @@ def send_mail(mail: Mail):
     logger.error(f"Email send failed after {MAX_RETRIES} attempts to {mail.to}: {str(last_exception)}")
     raise last_exception  # type: ignore
 
-
 def send_mail_batch(mails: List[Mail]):
     """
     Send a batch of emails to the users with retry logic.
@@ -78,7 +83,7 @@ def send_mail_batch(mails: List[Mail]):
 
     for mail in mails:
         params.append({
-            "from": f"{mail.sender.name} <{mail.sender.email}>",
+            "from": f"{mail.sender} <{sanitize(mail.sender)}@resend.dev>",
             "to": [mail.to],
             "subject": mail.subject,
             "html": mail.body,

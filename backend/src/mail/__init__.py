@@ -1,6 +1,6 @@
 from .agent import generate_mail
 from .client import send_mail, send_mail_batch
-from .base import Mail, Sender, PersonalizedMessage
+from .base import Mail, PersonalizedMessage
 
 __all__ = [
     # Mail Generation
@@ -12,6 +12,5 @@ __all__ = [
 
     # Data Models
     "PersonalizedMessage",
-    "Mail",
-    "Sender"
+    "Mail"
 ]

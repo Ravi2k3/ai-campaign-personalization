@@ -5,7 +5,6 @@ from src.mail import (
     generate_mail,
     send_mail,
     send_mail_batch,
-    Sender,
     Mail
 )
 
@@ -22,12 +21,25 @@ if __name__ == "__main__":
     # print(output.subject)
     # print(output.body)
 
-    send_mail(Mail(
-        sender=Sender(
-            name="John Doe",
-            email="miaow@miaow.com"
+    batch = [
+        Mail(
+            sender="John Doe",
+            to="gotham47g@gmail.com",
+            subject="Hello",
+            body="Hello, how are you?"
         ),
-        to="gotham47g@gmail.com",
-        subject="Hello",
-        body="Hello, how are you?"
-    ))
+        Mail(
+            sender="Miaow Woof",
+            to="gotham47g@gmail.com",
+            subject="Hello, please reply",
+            body="Hello, how are you?"
+        ),
+        Mail(
+            sender="Rawr Doe",
+            to="gotham47g@gmail.com",
+            subject="Hello, pls",
+            body="Hello, how are you?"
+        )
+    ]
+
+    send_mail_batch(batch)
