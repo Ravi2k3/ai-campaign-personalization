@@ -53,7 +53,7 @@ function getStatusColor(status: string) {
 function LeadsTableSkeleton() {
     return (
         <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
@@ -224,7 +224,7 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
 
     return (
         <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-background z-10 shadow-md">
                 <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
@@ -303,27 +303,31 @@ export default function CampaignDetail() {
     }
 
     return (
-        <div className="min-h-screen bg-background p-8">
-            <div className="max-w-6xl mx-auto">
+        <div className="min-h-screen bg-background p-8 flex flex-col">
+            <div className="max-w-6xl mx-auto w-full flex flex-col flex-1">
                 {/* Back link */}
-                <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
+                <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 flex-shrink-0">
                     <ArrowLeft size={16} />
                     Back to Campaigns
                 </Link>
 
                 {/* Header */}
-                <CampaignDetailsHeader
-                    loading={loading}
-                    campaign={campaign}
-                    setShowAddLead={setShowAddLead}
-                    setShowImportCSV={setShowImportCSV}
-                />
+                <div className="flex-shrink-0">
+                    <CampaignDetailsHeader
+                        loading={loading}
+                        campaign={campaign}
+                        setShowAddLead={setShowAddLead}
+                        setShowImportCSV={setShowImportCSV}
+                    />
+                </div>
 
                 {/* Campaign Info Card */}
-                <CampaignInfoCard campaign={campaign} leadsCount={leads.length} loading={loading} />
+                <div className="flex-shrink-0">
+                    <CampaignInfoCard campaign={campaign} leadsCount={leads.length} loading={loading} />
+                </div>
 
-                {/* Leads Table */}
-                <div className="border rounded-lg">
+                {/* Leads Table - min 30vh, grows to fill remaining space */}
+                <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
                     {loading ? <LeadsTableSkeleton /> : <LeadsTable leads={leads} />}
                 </div>
 

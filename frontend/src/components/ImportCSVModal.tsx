@@ -288,7 +288,7 @@ export default function ImportCSVModal({ open, onClose, onSuccess, campaignId }:
                         <div className="flex-1 flex flex-col min-h-0 border rounded-lg">
                             <div className="flex-1 overflow-auto">
                                 <Table>
-                                    <TableHeader className="sticky top-0 bg-background z-10">
+                                    <TableHeader className="sticky top-0 bg-background z-10 shadow-md">
                                         <TableRow>
                                             <TableHead className="w-8"></TableHead>
                                             <TableHead>Email</TableHead>
