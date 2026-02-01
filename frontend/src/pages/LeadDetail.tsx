@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-    ArrowLeft, 
-    Mail, 
-    Building2, 
-    Briefcase, 
-    CheckCircle2, 
-    Clock, 
-    Send, 
-    AlertCircle, 
-    Trash2 
+import {
+    ArrowLeft,
+    Mail,
+    Building2,
+    Briefcase,
+    CheckCircle2,
+    Clock,
+    Send,
+    AlertCircle,
+    Trash2
 } from "lucide-react"
 import DeleteLeadModal from "@/components/DeleteLeadModal"
 
@@ -150,6 +150,29 @@ function ActivityTimeline({
     loading: boolean;
     activity: EmailActivity[]
 }) {
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) {
+                next.delete(id)
+            } else {
+                next.add(id)
+            }
+            return next
+        })
+    }
+
+    const getStatusDotColor = (status: string) => {
+        switch (status) {
+            case "sent": return "bg-green-500"
+            case "pending": return "bg-yellow-500"
+            case "failed": return "bg-red-500"
+            default: return "bg-muted-foreground"
+        }
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -159,7 +182,7 @@ function ActivityTimeline({
                 {loading ? (
                     <div className="space-y-3">
                         {[1, 2, 3].map(i => (
-                            <Skeleton key={i} className="h-20 w-full" />
+                            <Skeleton key={i} className="h-16 w-full" />
                         ))}
                     </div>
                 ) : activity.length === 0 ? (
@@ -167,31 +190,78 @@ function ActivityTimeline({
                         No emails sent yet
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {activity.map((email) => (
-                            <div key={email.id} className="border rounded-lg p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        {email.status === "sent" ? (
-                                            <Send size={16} className="text-green-600" />
-                                        ) : email.status === "pending" ? (
-                                            <Clock size={16} className="text-yellow-600" />
-                                        ) : (
-                                            <AlertCircle size={16} className="text-red-600" />
-                                        )}
-                                        <span className="font-medium">Email #{email.sequence_number}</span>
+                    <div className="relative">
+                        {/* Vertical timeline line */}
+                        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border" />
+
+                        <div className="space-y-4">
+                            {activity.map((email) => {
+                                const isExpanded = expandedIds.has(email.id)
+
+                                return (
+                                    <div key={email.id} className="relative pl-8">
+                                        {/* Timeline dot */}
+                                        <div
+                                            className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-background ${getStatusDotColor(email.status)} ring-2 ring-background`}
+                                        />
+
+                                        {/* Content */}
+                                        <div
+                                            className={`rounded-lg border p-3 cursor-pointer transition-all hover:bg-muted/50 ${isExpanded ? 'bg-muted/30' : ''}`}
+                                            onClick={() => toggleExpand(email.id)}
+                                        >
+                                            {/* Header - always visible */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    {email.status === "sent" ? (
+                                                        <Send size={14} className="text-green-600" />
+                                                    ) : email.status === "pending" ? (
+                                                        <Clock size={14} className="text-yellow-600" />
+                                                    ) : (
+                                                        <AlertCircle size={14} className="text-red-600" />
+                                                    )}
+                                                    <span className="font-medium text-sm">
+                                                        Email #{email.sequence_number}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {email.sent_at ? formatDate(email.sent_at) : formatDate(email.created_at)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
+                                                        {email.status}
+                                                    </span>
+                                                    <svg
+                                                        className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+
+                                            {/* Subject - always visible but truncated when collapsed */}
+                                            <p className={`text-sm mt-2 ${isExpanded ? '' : 'line-clamp-1'}`}>
+                                                <span className="font-medium">Subject:</span> {email.subject}
+                                            </p>
+
+                                            {/* Body - only visible when expanded */}
+                                            {isExpanded && (
+                                                <div className="mt-3 pt-3 border-t">
+                                                    <p className="text-xs text-muted-foreground mb-1">Body:</p>
+                                                    <div
+                                                        className="text-sm [&>p]:mb-3 [&>p:last-child]:mb-0"
+                                                        dangerouslySetInnerHTML={{ __html: email.body }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
-                                        {email.status}
-                                    </span>
-                                </div>
-                                <p className="font-medium mb-1">{email.subject}</p>
-                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{email.body}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {email.sent_at ? `Sent: ${formatDate(email.sent_at)}` : `Created: ${formatDate(email.created_at)}`}
-                                </p>
-                            </div>
-                        ))}
+                                )
+                            })}
+                        </div>
                     </div>
                 )}
             </CardContent>

@@ -86,3 +86,4 @@ ENV/
 .netlify
 pyrefly.toml
 todo.md
+test.py
