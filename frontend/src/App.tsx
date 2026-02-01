@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner"
 import Campaigns from "./pages/Campaigns"
 import CampaignDetail from "./pages/CampaignDetail"
 import LeadDetail from "./pages/LeadDetail"
+import NotFound from "./pages/NotFound"
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="/" element={<Campaigns />} />
           <Route path="/campaigns/:id" element={<CampaignDetail />} />
           <Route path="/campaigns/:campaignId/leads/:leadId" element={<LeadDetail />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
       <Toaster />

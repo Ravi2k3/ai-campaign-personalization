@@ -218,7 +218,7 @@ export default function ImportCSVModal({ open, onClose, onSuccess, campaignId }:
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-            <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6">
                 <DialogHeader>
                     <DialogTitle>Import Leads from CSV</DialogTitle>
                     <DialogDescription>
@@ -228,7 +228,7 @@ export default function ImportCSVModal({ open, onClose, onSuccess, campaignId }:
 
                 <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
                     {/* Requirements hint */}
-                    <div className="text-sm bg-muted p-3 rounded-lg space-y-2">
+                    <div className="text-sm bg-muted p-3 rounded-lg space-y-2 shrink-0">
                         <div>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Required</p>
                             <div className="flex flex-wrap gap-1">
@@ -249,7 +249,7 @@ export default function ImportCSVModal({ open, onClose, onSuccess, campaignId }:
 
                     {/* File input with drag and drop */}
                     <div
-                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging
+                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors shrink-0 ${isDragging
                             ? "border-primary bg-primary/5"
                             : "border-muted-foreground/25 hover:border-muted-foreground/50"
                             }`}
@@ -274,7 +274,7 @@ export default function ImportCSVModal({ open, onClose, onSuccess, campaignId }:
 
                     {/* Missing headers warning */}
                     {missingHeaders.length > 0 && (
-                        <div className="flex items-start gap-2 text-destructive bg-destructive/10 p-3 rounded-lg">
+                        <div className="flex items-start gap-2 text-destructive bg-destructive/10 p-3 rounded-lg shrink-0">
                             <AlertCircle size={16} className="mt-0.5" />
                             <div className="text-sm">
                                 <p className="font-medium">Missing required columns:</p>
@@ -285,7 +285,7 @@ export default function ImportCSVModal({ open, onClose, onSuccess, campaignId }:
 
                     {/* Preview table */}
                     {parsedLeads.length > 0 && (
-                        <div className="flex-1 flex flex-col min-h-0 border rounded-lg">
+                        <div className="flex-1 flex flex-col min-h-[200px] border rounded-lg">
                             <div className="flex-1 overflow-auto">
                                 <Table>
                                     <TableHeader className="sticky top-0 bg-background z-10 shadow-md">

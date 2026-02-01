@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
 import { get, patch } from "@/lib/api"
 import { toast } from "sonner"
+import ErrorPage from "./ErrorPage"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
@@ -345,7 +346,17 @@ export default function CampaignDetail() {
             setLeads(leadsData)
             setError(null)
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to fetch data")
+            // Parse error message properly
+            let errorMessage = "Failed to fetch data"
+            if (err instanceof Error) {
+                try {
+                    const errorObj = JSON.parse(err.message)
+                    errorMessage = errorObj.detail || err.message
+                } catch {
+                    errorMessage = err.message
+                }
+            }
+            setError(errorMessage)
         } finally {
             setLoading(false)
         }
@@ -391,12 +402,14 @@ export default function CampaignDetail() {
     }
 
     if (error) {
+        // Determine if it's a 404 or 500 error
+        const is404 = error.toLowerCase().includes("not found") || error.toLowerCase().includes("404")
         return (
-            <div className="min-h-screen bg-background p-8">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-destructive bg-destructive/10 p-4 rounded-lg">{error}</div>
-                </div>
-            </div>
+            <ErrorPage
+                title={is404 ? "Campaign Not Found" : "Something Went Wrong"}
+                message={error}
+                statusCode={is404 ? 404 : 500}
+            />
         )
     }
 

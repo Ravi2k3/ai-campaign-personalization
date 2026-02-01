@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { post } from "@/lib/api"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,7 +25,11 @@ export default function AddLeadModal({
     campaignId: string
 }) {
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [fieldErrors, setFieldErrors] = useState<{
+        email?: string
+        first_name?: string
+        last_name?: string
+    }>({})
     const [form, setForm] = useState({
         email: "",
         first_name: "",
@@ -34,21 +39,67 @@ export default function AddLeadModal({
         notes: "",
     })
 
+    const validateField = (name: string, value: string) => {
+        let error: string | undefined
+
+        switch (name) {
+            case "first_name":
+                if (!value.trim()) error = "First name is required"
+                break
+            case "last_name":
+                if (!value.trim()) error = "Last name is required"
+                break
+            case "email":
+                if (!value.trim()) {
+                    error = "Email is required"
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    error = "Invalid email address"
+                }
+                break
+        }
+
+        setFieldErrors(prev => ({ ...prev, [name]: error }))
+        return !error
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target
+        setForm(prev => ({ ...prev, [id]: value }))
+        // Only validate if it's one of the required fields we track errors for
+        if (["first_name", "last_name", "email"].includes(id)) {
+            validateField(id, value)
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        const isFirstNameValid = validateField("first_name", form.first_name)
+        const isLastNameValid = validateField("last_name", form.last_name)
+        const isEmailValid = validateField("email", form.email)
+
+        if (!isFirstNameValid || !isLastNameValid || !isEmailValid) {
+            return
+        }
+
         setLoading(true)
-        setError(null)
 
         try {
             await post(`/campaigns/${campaignId}/leads`, form)
             setForm({ email: "", first_name: "", last_name: "", company: "", title: "", notes: "" })
+            setFieldErrors({})
             onSuccess()
+            toast.success("Lead added successfully")
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to add lead")
+            const message = err instanceof Error ? err.message : "Failed to add lead"
+            toast.error(message)
         } finally {
             setLoading(false)
         }
     }
+
+    const hasFieldErrors = Object.values(fieldErrors).some(Boolean)
+    const hasEmptyFields = !form.first_name.trim() || !form.last_name.trim() || !form.email.trim()
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -66,21 +117,27 @@ export default function AddLeadModal({
                             <Label htmlFor="first_name">First Name *</Label>
                             <Input
                                 id="first_name"
-                                required
                                 value={form.first_name}
-                                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                                onChange={handleInputChange}
                                 placeholder="John"
+                                className={fieldErrors.first_name ? "border-destructive" : ""}
                             />
+                            {fieldErrors.first_name && (
+                                <p className="text-xs text-destructive">{fieldErrors.first_name}</p>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="last_name">Last Name *</Label>
                             <Input
                                 id="last_name"
-                                required
                                 value={form.last_name}
-                                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                                onChange={handleInputChange}
                                 placeholder="Doe"
+                                className={fieldErrors.last_name ? "border-destructive" : ""}
                             />
+                            {fieldErrors.last_name && (
+                                <p className="text-xs text-destructive">{fieldErrors.last_name}</p>
+                            )}
                         </div>
                     </div>
 
@@ -89,11 +146,14 @@ export default function AddLeadModal({
                         <Input
                             id="email"
                             type="email"
-                            required
                             value={form.email}
-                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            onChange={handleInputChange}
                             placeholder="john@company.com"
+                            className={fieldErrors.email ? "border-destructive" : ""}
                         />
+                        {fieldErrors.email && (
+                            <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -102,7 +162,7 @@ export default function AddLeadModal({
                             <Input
                                 id="company"
                                 value={form.company}
-                                onChange={(e) => setForm({ ...form, company: e.target.value })}
+                                onChange={handleInputChange}
                                 placeholder="Acme Inc"
                             />
                         </div>
@@ -111,7 +171,7 @@ export default function AddLeadModal({
                             <Input
                                 id="title"
                                 value={form.title}
-                                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                onChange={handleInputChange}
                                 placeholder="CTO"
                             />
                         </div>
@@ -122,21 +182,17 @@ export default function AddLeadModal({
                         <textarea
                             id="notes"
                             value={form.notes}
-                            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                            onChange={handleInputChange}
                             className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             placeholder="Met at conference, interested in AI..."
                         />
                     </div>
 
-                    {error && (
-                        <div className="text-sm text-destructive">{error}</div>
-                    )}
-
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading}>
+                        <Button type="submit" disabled={loading || hasFieldErrors || hasEmptyFields}>
                             {loading ? "Adding..." : "Add Lead"}
                         </Button>
                     </DialogFooter>
