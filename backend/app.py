@@ -5,14 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.db import init_db, test_connection # type: ignore
 from src.api import campaigns_router, leads_router, leads_detail_router # type: ignore
+from src.scheduler import start_scheduler, stop_scheduler # type: ignore
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database tables
+    # Startup: Initialize database tables and start scheduler
     if test_connection():
         init_db()
+        start_scheduler()
     yield
-    # Shutdown: cleanup if needed
+    # Shutdown: stop scheduler
+    stop_scheduler()
 
 app = FastAPI(
     title="Everis AI Mail Personalization",

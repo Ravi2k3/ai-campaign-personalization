@@ -1,4 +1,4 @@
-import os, time, resend
+import os, re, time, resend
 
 from typing import List
 from dotenv import load_dotenv
@@ -11,6 +11,12 @@ load_dotenv()
 # Set the API key for Resend
 resend.api_key = os.getenv("RESEND_API_KEY")
 
+# Setup domain
+EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", None)
+
+if not EMAIL_DOMAIN:
+    raise ValueError("Email Domain not found. Please add it in the .env file.")
+
 # Retry configuration
 MAX_RETRIES = 3
 
@@ -22,8 +28,8 @@ if len(RETRY_DELAYS) != MAX_RETRIES:
     raise ValueError("RETRY_DELAYS must be of length MAX_RETRIES")
 
 def sanitize(name: str) -> str:
-    # Convert string to lowercase and replace spaces with hyphens.
-    return name.lower().replace(" ", "-")
+    # Keep only a-z, 0-9, and hyphens. Remove everything else.
+    return re.sub(r'[^a-z0-9-]', '', name.lower().replace(" ", "-"))
 
 def send_mail(mail: Mail):
     """
@@ -39,7 +45,7 @@ def send_mail(mail: Mail):
         Exception: If all retry attempts fail.
     """
     params: resend.Emails.SendParams = {
-        "from": f"{mail.sender.name} <{sanitize(mail.sender.name)}@resend.dev>",
+        "from": f"{mail.sender.name} <{sanitize(mail.sender.name)}@{EMAIL_DOMAIN}>",
         "to": [mail.to],
         "subject": mail.subject,
         "html": mail.body,
@@ -65,12 +71,14 @@ def send_mail(mail: Mail):
 
     raise last_exception  # type: ignore
 
-def send_mail_batch(mails: List[Mail]):
+def send_mail_batch(mails: List[Mail], idempotency_key: str | None = None):
     """
     Send a batch of emails to the users with retry logic.
 
     Args:
         mails (List[Mail]): The list of emails to send.
+        idempotency_key (str | None): Optional idempotency key to prevent duplicate sends.
+            For batch sends, use a single key that represents the whole batch (e.g., "job-run/123456789").
 
     Returns:
         resend.Emails.SendResponse: The response from the email.
@@ -81,20 +89,26 @@ def send_mail_batch(mails: List[Mail]):
     params: List[resend.Emails.SendParams] = []
 
     for mail in mails:
-        params.append({
-            "from": f"{mail.sender.name} <{sanitize(mail.sender.name)}@resend.dev>",
+        param: resend.Emails.SendParams = {
+            "from": f"{mail.sender.name} <{sanitize(mail.sender.name)}@{EMAIL_DOMAIN}>",
             "to": [mail.to],
             "subject": mail.subject,
             "html": mail.body,
             "reply_to": mail.sender.email
-        })
-
+        }
+        params.append(param)
+    
+    # Prepare options with idempotency key if provided
+    options: resend.Batch.SendOptions | None = None
+    if idempotency_key:
+        options = {"idempotency_key": idempotency_key}
+    
     last_exception = None
     recipients = [m.to for m in mails]
 
     for attempt in range(MAX_RETRIES):
         try:
-            return resend.Batch.send(params)
+            return resend.Batch.send(params, options) if options else resend.Batch.send(params)
         except Exception as e:
             last_exception = e
             logger.warning(

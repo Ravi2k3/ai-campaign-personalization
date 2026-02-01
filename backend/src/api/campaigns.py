@@ -71,7 +71,7 @@ async def delete_campaign(campaign_id: str):
 async def update_campaign_status(campaign_id: str, action: str):
     """
     Toggle campaign status:
-    - action='start': draft -> active
+    - action='start': draft/paused -> active (also queues pending leads)
     - action='stop': active -> paused
     """
     if action not in ["start", "stop"]:
@@ -92,6 +92,17 @@ async def update_campaign_status(campaign_id: str, action: str):
             if current_status not in ["draft", "paused"]:
                 raise HTTPException(status_code=400, detail="Can only start campaigns in draft or paused status")
             new_status = "active"
+            
+            # Queue pending leads for immediate processing by setting next_email_at = NOW()
+            # Only for leads that haven't been processed yet (pending status, no next_email_at)
+            cur.execute("""
+                UPDATE leads 
+                SET next_email_at = NOW(), updated_at = NOW()
+                WHERE campaign_id = %s 
+                  AND status = 'pending'
+                  AND next_email_at IS NULL
+            """, (campaign_id,))
+            
         else:  # stop
             if current_status != "active":
                 raise HTTPException(status_code=400, detail="Can only stop campaigns in active status")

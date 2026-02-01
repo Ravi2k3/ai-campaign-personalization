@@ -12,15 +12,14 @@ class Status:
         COMPLETED = "completed"
 
     class LeadStatus(str, Enum):
-        PENDING = "pending"
-        PROCESSING = "processing"
-        ACTIVE = "active"
-        REPLIED = "replied"
-        COMPLETED = "completed"
-        FAILED = "failed"
+        PENDING = "pending"       # Waiting to be processed
+        PROCESSING = "processing" # Currently being processed (locked)
+        ACTIVE = "active"         # Email sent, waiting for follow-up
+        REPLIED = "replied"       # Lead has replied
+        COMPLETED = "completed"   # All follow-ups sent
+        FAILED = "failed"         # Processing failed
 
     class EmailStatus(str, Enum):
-        PENDING = "pending"
         SENT = "sent"
         FAILED = "failed"
 

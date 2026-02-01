@@ -12,14 +12,14 @@
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Frontend | React + Vite + TypeScript | UI with shadcn/ui components |
-| Styling | Tailwind CSS | Utility-first CSS |
-| Backend | Python (FastAPI) | REST API |
-| Database | Supabase (Postgres) | Data persistence + real-time |
-| Email | Resend | Transactional email delivery |
-| LLM | OpenAI-compatible LLM | AI-powered email personalization |
+| Layer    | Technology                | Purpose                          |
+| -------- | ------------------------- | -------------------------------- |
+| Frontend | React + Vite + TypeScript | UI with shadcn/ui components     |
+| Styling  | Tailwind CSS              | Utility-first CSS                |
+| Backend  | Python (FastAPI)          | REST API                         |
+| Database | Supabase (Postgres)       | Data persistence + real-time     |
+| Email    | Resend                    | Transactional email delivery     |
+| LLM      | OpenAI-compatible LLM     | AI-powered email personalization |
 
 ## Quick Start
 
@@ -65,6 +65,7 @@ Place a .env in backend folder with the following content:
 
 ```env
 RESEND_API_KEY = ...
+EMAIL_DOMAIN = ...
 
 YOUR_LLM_API_KEY = ...
 
