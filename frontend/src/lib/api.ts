@@ -47,5 +47,8 @@ export const post = <T>(endpoint: string, body: unknown) =>
 export const put = <T>(endpoint: string, body: unknown) =>
     api<T>(endpoint, { method: "PUT", body })
 
+export const patch = <T>(endpoint: string, body: unknown) =>
+    api<T>(endpoint, { method: "PATCH", body })
+
 export const del = <T>(endpoint: string) =>
     api<T>(endpoint, { method: "DELETE" })

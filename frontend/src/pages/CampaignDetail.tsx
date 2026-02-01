@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
-import { get } from "@/lib/api"
+import { get, patch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,9 +13,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft, Upload, UserPlus, Clock, RefreshCw, Users, Search } from "lucide-react"
+import { ArrowLeft, Upload, UserPlus, Clock, RefreshCw, Users, Search, Play, Pause, Trash2 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
+import DeleteCampaignModal from "@/components/DeleteCampaignModal"
 
 type Campaign = {
     id: string
@@ -84,13 +85,23 @@ function CampaignDetailsHeader({
     loading,
     campaign,
     setShowAddLead,
-    setShowImportCSV
+    setShowImportCSV,
+    onToggleStatus,
+    toggling,
+    onDelete
 }: {
     loading: boolean
     campaign: Campaign | null
     setShowAddLead: (show: boolean) => void
     setShowImportCSV: (show: boolean) => void
+    onToggleStatus: () => void
+    toggling: boolean
+    onDelete: () => void
 }) {
+    const canStart = campaign?.status === "draft" || campaign?.status === "paused"
+    const canStop = campaign?.status === "active"
+    const showToggle = canStart || canStop
+
     return (
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
             <div className="min-w-0 w-full sm:flex-1">
@@ -109,18 +120,53 @@ function CampaignDetailsHeader({
                 )}
             </div>
             <div className="flex gap-2 flex-shrink-0">
-                <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2">
-                    <Upload size={16} />
-                    Import CSV
-                </Button>
-                <Button onClick={() => setShowAddLead(true)} className="gap-2">
-                    <UserPlus size={16} />
-                    Add Lead
-                </Button>
+                {loading ? (
+                    <>
+                        <Skeleton className="h-10 w-36" />
+                        <Skeleton className="h-10 w-28" />
+                        <Skeleton className="h-10 w-28" />
+                        <Skeleton className="h-10 w-10" />
+                    </>
+                ) : (
+                    <>
+                        {showToggle && (
+                            <Button
+                                variant={canStart ? "default" : "outline"}
+                                onClick={onToggleStatus}
+                                disabled={toggling}
+                                className="gap-2"
+                            >
+                                {canStart ? (
+                                    <>
+                                        <Play size={16} />
+                                        {toggling ? "Starting..." : "Start"}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Pause size={16} />
+                                        {toggling ? "Stopping..." : "Pause"}
+                                    </>
+                                )}
+                            </Button>
+                        )}
+                        <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2">
+                            <Upload size={16} />
+                            Import CSV
+                        </Button>
+                        <Button onClick={() => setShowAddLead(true)} className="gap-2">
+                            <UserPlus size={16} />
+                            Add Lead
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={onDelete}>
+                            <Trash2 color="#ef4343" size={16} />
+                        </Button>
+                    </>
+                )}
             </div>
         </div>
     )
 }
+
 
 function formatDelay(minutes: number): string {
     const days = Math.floor(minutes / (24 * 60))
@@ -214,7 +260,7 @@ function CampaignInfoCard({
     )
 }
 
-function LeadsTable({ leads }: { leads: Lead[] }) {
+function LeadsTable({ leads, campaignId }: { leads: Lead[], campaignId: string }) {
     return (
         <Table>
             <TableHeader className="sticky top-0 bg-background z-10 shadow-md">
@@ -229,7 +275,11 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
             </TableHeader>
             <TableBody>
                 {leads.map((lead) => (
-                    <TableRow key={lead.id}>
+                    <TableRow
+                        key={lead.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => window.location.href = `/campaigns/${campaignId}/leads/${lead.id}`}
+                    >
                         <TableCell className="font-medium">
                             {lead.first_name} {lead.last_name}
                         </TableCell>
@@ -266,6 +316,8 @@ export default function CampaignDetail() {
     const [showAddLead, setShowAddLead] = useState(false)
     const [showImportCSV, setShowImportCSV] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
+    const [toggling, setToggling] = useState(false)
+    const [showDelete, setShowDelete] = useState(false)
 
     const filteredLeads = useMemo(() => {
         if (!searchQuery.trim()) return leads
@@ -309,6 +361,22 @@ export default function CampaignDetail() {
         fetchData()
     }
 
+    const handleToggleStatus = async () => {
+        if (!id || !campaign) return
+
+        const action = campaign.status === "active" ? "stop" : "start"
+
+        try {
+            setToggling(true)
+            await patch(`/campaigns/${id}/status?action=${action}`, {})
+            await fetchData()
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update campaign status")
+        } finally {
+            setToggling(false)
+        }
+    }
+
     if (error) {
         return (
             <div className="min-h-screen bg-background p-8">
@@ -335,6 +403,9 @@ export default function CampaignDetail() {
                         campaign={campaign}
                         setShowAddLead={setShowAddLead}
                         setShowImportCSV={setShowImportCSV}
+                        onToggleStatus={handleToggleStatus}
+                        toggling={toggling}
+                        onDelete={() => setShowDelete(true)}
                     />
                 </div>
 
@@ -343,19 +414,27 @@ export default function CampaignDetail() {
                     <CampaignInfoCard campaign={campaign} leadsCount={leads.length} loading={loading} />
                 </div>
 
-                <h1 className="text-3xl font-bold pb-3">Leads</h1>
-                
+                {loading ? (
+                    <Skeleton className="h-9 w-32 mb-4" />
+                ) : (
+                    <h1 className="text-3xl font-bold pb-3">Leads</h1>
+                )}
+
                 {/* Search Bar */}
                 <div className="flex-shrink-0 mb-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                        <Input
-                            placeholder="Search by name, email, company, title, status, or sequence..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
-                        />
-                    </div>
+                    {loading ? (
+                        <Skeleton className="h-10 w-full" />
+                    ) : (
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                            <Input
+                                placeholder="Search by name, email, company, title, status, or sequence..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Leads Table - min 30vh, grows to fill remaining space */}
@@ -367,9 +446,10 @@ export default function CampaignDetail() {
                     <LeadsEmptyState />
                 ) : (
                     <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
-                        <LeadsTable leads={filteredLeads} />
+                        <LeadsTable leads={filteredLeads} campaignId={id!} />
                     </div>
                 )}
+
 
                 {/* Modals */}
                 {id && (
@@ -385,6 +465,12 @@ export default function CampaignDetail() {
                             onClose={() => setShowImportCSV(false)}
                             onSuccess={handleLeadsAdded}
                             campaignId={id}
+                        />
+                        <DeleteCampaignModal
+                            open={showDelete}
+                            onClose={() => setShowDelete(false)}
+                            campaignId={id}
+                            campaignName={campaign?.name || ""}
                         />
                     </>
                 )}

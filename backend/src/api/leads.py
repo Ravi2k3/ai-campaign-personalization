@@ -2,9 +2,20 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 
 from ..db import get_cursor
-from .models import LeadCreate, LeadBulkCreate, LeadResponse
+from .models import (
+    LeadCreate, 
+    LeadBulkCreate, 
+    LeadResponse, 
+    LeadUpdate,
+    LeadDetailResponse,
+    EmailActivityResponse
+)
 
+# Router for lead list
 router = APIRouter(prefix="/campaigns/{campaign_id}/leads", tags=["leads"])
+
+# Router for lead details
+detail_router = APIRouter(prefix="/leads", tags=["leads"])
 
 @router.get("", response_model=List[LeadResponse])
 async def list_leads(campaign_id: str):
@@ -102,3 +113,87 @@ async def delete_lead(campaign_id: str, lead_id: str):
         raise HTTPException(status_code=404, detail="Lead not found")
     
     return {"message": "Lead deleted"}
+
+@detail_router.get("/{lead_id}", response_model=LeadDetailResponse)
+async def get_lead_detail(lead_id: str):
+    """Get detailed information about a specific lead including campaign context"""
+    with get_cursor() as cur:
+        cur.execute("""
+            SELECT 
+                l.id, l.campaign_id, l.email, l.first_name, l.last_name, 
+                l.company, l.title, l.notes, l.status, l.has_replied, 
+                l.current_sequence, l.next_email_at, l.created_at, l.updated_at,
+                c.name as campaign_name
+            FROM leads l
+            JOIN campaigns c ON l.campaign_id = c.id
+            WHERE l.id = %s
+        """, (lead_id,))
+        lead = cur.fetchone()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return lead
+
+@detail_router.get("/{lead_id}/activity", response_model=List[EmailActivityResponse])
+async def get_lead_activity(lead_id: str, campaign_id: str):
+    """Get email activity for a specific lead in a specific campaign"""
+    with get_cursor() as cur:
+        # Verify lead belongs to campaign
+        cur.execute(
+            "SELECT id FROM leads WHERE id = %s AND campaign_id = %s",
+            (lead_id, campaign_id)
+        )
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Lead not found in this campaign")
+        
+        # Get email activity
+        cur.execute("""
+            SELECT id, sequence_number, subject, body, status, sent_at, created_at
+            FROM emails
+            WHERE lead_id = %s
+            ORDER BY created_at DESC
+        """, (lead_id,))
+        emails = cur.fetchall()
+    
+    return emails
+
+@detail_router.patch("/{lead_id}", response_model=LeadResponse)
+async def update_lead(lead_id: str, update: LeadUpdate):
+    """Update lead information (notes, status, has_replied)"""
+    # Build dynamic update query
+    updates = []
+    params = []
+    
+    if update.notes is not None:
+        updates.append("notes = %s")
+        params.append(update.notes)
+    
+    if update.has_replied is not None:
+        updates.append("has_replied = %s")
+        params.append(str(update.has_replied))
+    
+    if update.status is not None:
+        updates.append("status = %s")
+        params.append(update.status)
+    
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    updates.append("updated_at = NOW()")
+    params.append(lead_id)
+    
+    with get_cursor(commit=True) as cur:
+        cur.execute(f"""
+            UPDATE leads
+            SET {', '.join(updates)}
+            WHERE id = %s
+            RETURNING id, campaign_id, email, first_name, last_name, company,
+                      title, notes, status, has_replied, current_sequence, created_at
+        """, params)
+        updated_lead = cur.fetchone()
+    
+    if not updated_lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return updated_lead

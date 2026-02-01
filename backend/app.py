@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.db import init_db, test_connection # type: ignore
-from src.api import campaigns_router, leads_router # type: ignore
+from src.api import campaigns_router, leads_router, leads_detail_router # type: ignore
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,6 +37,7 @@ app.add_middleware(
 # Register routers
 app.include_router(campaigns_router)
 app.include_router(leads_router)
+app.include_router(leads_detail_router)
 
 @app.get("/health")
 async def health_check():

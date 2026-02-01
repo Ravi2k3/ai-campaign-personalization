@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 
 import Campaigns from "./pages/Campaigns"
 import CampaignDetail from "./pages/CampaignDetail"
+import LeadDetail from "./pages/LeadDetail"
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Campaigns />} />
           <Route path="/campaigns/:id" element={<CampaignDetail />} />
+          <Route path="/campaigns/:campaignId/leads/:leadId" element={<LeadDetail />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

@@ -48,3 +48,24 @@ class LeadResponse(BaseModel):
     has_replied: bool
     current_sequence: int
     created_at: datetime
+
+class LeadUpdate(BaseModel):
+    notes: Optional[str] = None
+    has_replied: Optional[bool] = None
+    status: Optional[str] = None
+
+class LeadDetailResponse(LeadResponse):
+    """Extended lead response with campaign context"""
+    campaign_name: str
+    next_email_at: Optional[datetime]
+    updated_at: datetime
+
+class EmailActivityResponse(BaseModel):
+    id: str
+    sequence_number: int
+    subject: str
+    body: str
+    status: str
+    sent_at: Optional[datetime]
+    created_at: datetime
+
