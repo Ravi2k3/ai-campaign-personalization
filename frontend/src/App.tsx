@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 import Campaigns from "./pages/Campaigns"
 import CampaignDetail from "./pages/CampaignDetail"
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="/campaigns/:campaignId/leads/:leadId" element={<LeadDetail />} />
         </Routes>
       </BrowserRouter>
+      <Toaster />
     </ThemeProvider>
   )
 }

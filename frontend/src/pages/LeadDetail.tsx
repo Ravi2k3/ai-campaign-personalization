@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { get, patch } from "@/lib/api"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -95,28 +96,66 @@ export default function LeadDetail() {
     }, [leadId, campaignId])
 
     const handleSaveNotes = async () => {
-        if (!leadId) return
+        if (!leadId || !lead) return
+
+        const previousNotes = lead.notes
+
+        // Optimistic update
+        setLead({ ...lead, notes })
+        setSaving(true)
 
         try {
-            setSaving(true)
             await patch(`/leads/${leadId}`, { notes })
-            await fetchData()
+            toast.success("Notes saved successfully")
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to save notes")
+            // Revert on error
+            setLead({ ...lead, notes: previousNotes })
+            setNotes(previousNotes || "")
+
+            // Parse error message properly
+            let errorMessage = "Failed to save notes"
+            if (err instanceof Error) {
+                try {
+                    const errorObj = JSON.parse(err.message)
+                    errorMessage = errorObj.detail || err.message
+                } catch {
+                    errorMessage = err.message
+                }
+            }
+            toast.error(errorMessage)
         } finally {
             setSaving(false)
         }
     }
 
     const handleMarkAsReplied = async () => {
-        if (!leadId) return
+        if (!leadId || !lead) return
+
+        const previousStatus = lead.status
+        const previousReplied = lead.has_replied
+
+        // Optimistic update
+        setLead({ ...lead, has_replied: true, status: "replied" })
+        setMarking(true)
 
         try {
-            setMarking(true)
             await patch(`/leads/${leadId}`, { has_replied: true, status: "replied" })
-            await fetchData()
+            toast.success("Lead marked as replied")
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to mark as replied")
+            // Revert on error
+            setLead({ ...lead, has_replied: previousReplied, status: previousStatus })
+
+            // Parse error message properly
+            let errorMessage = "Failed to mark as replied"
+            if (err instanceof Error) {
+                try {
+                    const errorObj = JSON.parse(err.message)
+                    errorMessage = errorObj.detail || err.message
+                } catch {
+                    errorMessage = err.message
+                }
+            }
+            toast.error(errorMessage)
         } finally {
             setMarking(false)
         }

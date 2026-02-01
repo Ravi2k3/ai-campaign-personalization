@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
 import { get, patch } from "@/lib/api"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
@@ -166,7 +167,6 @@ function CampaignDetailsHeader({
         </div>
     )
 }
-
 
 function formatDelay(minutes: number): string {
     const days = Math.floor(minutes / (24 * 60))
@@ -362,16 +362,29 @@ export default function CampaignDetail() {
     }
 
     const handleToggleStatus = async () => {
-        if (!id || !campaign) return
+        if (!id || !campaign || toggling) return // Prevent multiple clicks
 
         const action = campaign.status === "active" ? "stop" : "start"
 
+        setToggling(true)
+
         try {
-            setToggling(true)
-            await patch(`/campaigns/${id}/status?action=${action}`, {})
-            await fetchData()
+            const result = await patch<Campaign>(`/campaigns/${id}/status?action=${action}`, {})
+            // Update with server response
+            setCampaign(result)
+            toast.success(`Campaign ${action === "start" ? "started" : "paused"} successfully`)
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to update campaign status")
+            // Parse error message properly
+            let errorMessage = "Failed to update campaign status"
+            if (err instanceof Error) {
+                try {
+                    const errorObj = JSON.parse(err.message)
+                    errorMessage = errorObj.detail || err.message
+                } catch {
+                    errorMessage = err.message
+                }
+            }
+            toast.error(errorMessage)
         } finally {
             setToggling(false)
         }
