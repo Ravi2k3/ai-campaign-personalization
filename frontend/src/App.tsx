@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
 
 import Campaigns from "./pages/Campaigns"
+import CampaignDetail from "./pages/CampaignDetail"
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Campaigns />} />
+          <Route path="/campaigns/:id" element={<CampaignDetail />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { post } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,13 +12,15 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 
-type Props = {
+export default function CreateCampaignModal({
+    open,
+    onClose,
+    onSuccess
+}: {
     open: boolean
     onClose: () => void
     onSuccess: () => void
-}
-
-export default function CreateCampaignModal({ open, onClose, onSuccess }: Props) {
+}) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [fieldErrors, setFieldErrors] = useState<{ max_follow_ups?: string }>({})
@@ -29,6 +31,16 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
         goal: "",
         max_follow_ups: 3,
     })
+
+    // Follow-up delay split into days, hours, minutes
+    const [delayDays, setDelayDays] = useState(2)
+    const [delayHours, setDelayHours] = useState(0)
+    const [delayMinutes, setDelayMinutes] = useState(0)
+
+    // Compute total minutes from D/H/M
+    const followUpDelayMinutes = useMemo(() => {
+        return (delayDays * 24 * 60) + (delayHours * 60) + delayMinutes
+    }, [delayDays, delayHours, delayMinutes])
 
     const validateMaxFollowUps = (value: number) => {
         if (value < 1 || value > 10) {
@@ -56,8 +68,14 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
         setError(null)
 
         try {
-            await post("/campaigns", form)
+            await post("/campaigns", {
+                ...form,
+                follow_up_delay_minutes: followUpDelayMinutes
+            })
             setForm({ name: "", sender_name: "", sender_email: "", goal: "", max_follow_ups: 3 })
+            setDelayDays(2)
+            setDelayHours(0)
+            setDelayMinutes(0)
             setFieldErrors({})
             onSuccess()
         } catch (err) {
@@ -114,6 +132,47 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
                                 placeholder="john@company.com"
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Follow-up Delay</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={delayDays}
+                                    onChange={(e) => setDelayDays(Math.max(0, parseInt(e.target.value) || 0))}
+                                    className="pr-8"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">D</span>
+                            </div>
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={23}
+                                    value={delayHours}
+                                    onChange={(e) => setDelayHours(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                                    className="pr-8"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">H</span>
+                            </div>
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={59}
+                                    value={delayMinutes}
+                                    onChange={(e) => setDelayMinutes(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+                                    className="pr-8"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">M</span>
+                            </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Wait time between follow-up emails
+                        </p>
                     </div>
 
                     <div className="space-y-2">

@@ -12,12 +12,14 @@
 
 ## Tech Stack
 
-| Frontend | Backend | Infrastructure |
-|----------|---------|----------------|
-| React + Vite | FastAPI | Supabase (Postgres) |
-| TypeScript | Python | Resend (Email) |
-| shadcn/ui | Pydantic | Axiom (Logging) |
-| Tailwind CSS | psycopg2 | Moonlight (LLM) |
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Frontend | React + Vite + TypeScript | UI with shadcn/ui components |
+| Styling | Tailwind CSS | Utility-first CSS |
+| Backend | Python (FastAPI) | REST API |
+| Database | Supabase (Postgres) | Data persistence + real-time |
+| Email | Resend | Transactional email delivery |
+| LLM | OpenAI-compatible LLM | AI-powered email personalization |
 
 ## Quick Start
 

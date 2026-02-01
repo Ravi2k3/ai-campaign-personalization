@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
+import { Link } from "react-router-dom"
 import { get } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -63,29 +64,31 @@ function CampaignHeader({
 
 function CampaignCard({ campaign }: { campaign: Campaign }) {
     return (
-        <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-            <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(campaign.status)}`}>
-                        {campaign.status}
-                    </span>
-                </div>
-                <CardDescription className="line-clamp-2">
-                    {campaign.goal || "No goal specified"}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail size={14} />
-                    <span>{campaign.sender_name} &lt;{campaign.sender_email}&gt;</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users size={14} />
-                    <span>Max {campaign.max_follow_ups} follow-ups</span>
-                </div>
-            </CardContent>
-        </Card>
+        <Link to={`/campaigns/${campaign.id}`}>
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                            {campaign.status}
+                        </span>
+                    </div>
+                    <CardDescription className="line-clamp-2">
+                        {campaign.goal || "No goal specified"}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail size={14} />
+                        <span>{campaign.sender_name} &lt;{campaign.sender_email}&gt;</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users size={14} />
+                        <span>Max {campaign.max_follow_ups} follow-ups</span>
+                    </div>
+                </CardContent>
+            </Card>
+        </Link>
     )
 }
 

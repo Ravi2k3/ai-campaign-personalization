@@ -22,3 +22,29 @@ class CampaignResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+
+# Request/Response models for leads
+class LeadCreate(BaseModel):
+    email: str
+    first_name: str
+    last_name: str
+    company: Optional[str] = None
+    title: Optional[str] = None
+    notes: Optional[str] = None
+
+class LeadBulkCreate(BaseModel):
+    leads: List[LeadCreate]
+
+class LeadResponse(BaseModel):
+    id: str
+    campaign_id: str
+    email: str
+    first_name: str
+    last_name: str
+    company: Optional[str]
+    title: Optional[str]
+    notes: Optional[str]
+    status: str
+    has_replied: bool
+    current_sequence: int
+    created_at: datetime
