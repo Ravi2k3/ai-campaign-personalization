@@ -145,7 +145,7 @@ function CampaignDetailsHeader({
                                 ) : (
                                     <>
                                         <Pause size={16} />
-                                        {toggling ? "Stopping..." : "Pause"}
+                                        {toggling ? "Pausing..." : "Pause"}
                                     </>
                                 )}
                             </Button>

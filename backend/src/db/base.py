@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     name TEXT NOT NULL,
     sender_name TEXT NOT NULL,
     sender_email TEXT NOT NULL,
-    goal TEXT,
+    goal TEXT NOT NULL,
     follow_up_delay_minutes INTEGER DEFAULT 2880,
     max_follow_ups INTEGER DEFAULT 3,
     status TEXT DEFAULT 'draft',

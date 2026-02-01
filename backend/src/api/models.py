@@ -7,7 +7,7 @@ class CampaignCreate(BaseModel):
     name: str
     sender_name: str
     sender_email: str
-    goal: Optional[str] = None
+    goal: str  # Required field for campaign personalization
     follow_up_delay_minutes: int = 2880
     max_follow_ups: int = 3
 
@@ -55,7 +55,7 @@ class LeadUpdate(BaseModel):
     status: Optional[str] = None
 
 class LeadDetailResponse(LeadResponse):
-    """Extended lead response with campaign context"""
+    # Extended lead response with campaign context
     campaign_name: str
     next_email_at: Optional[datetime]
     updated_at: datetime

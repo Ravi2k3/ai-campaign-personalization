@@ -84,7 +84,7 @@ async def generate_mail(
     user_info: dict,
     campaign_info: dict,
     previous_emails: list
-) -> PersonalizedMessage:
+) -> PersonalizedMessage: # type: ignore
     """
     Generate a personalized email using AI with retry logic.
     
@@ -108,9 +108,11 @@ async def generate_mail(
         persistence=False # We do not need to store entire agents history
     )
     
-    email_agent_prompt = Content(
-        PROMPT.format(user_info=user_info, campaign_info=campaign_info, previous_emails=previous_emails)
-    )
+    email_agent_prompt = Content(PROMPT.format(
+        user_info=user_info,
+        campaign_info=campaign_info,
+        previous_emails=previous_emails
+    ))
 
     last_exception = None
     
@@ -130,4 +132,6 @@ async def generate_mail(
     
     logger.error(f"Email generation failed after {MAX_RETRIES} attempts: {str(last_exception)}")
 
-    raise last_exception  # type: ignore
+    if last_exception:
+        # pls catch this during runtime
+        raise last_exception

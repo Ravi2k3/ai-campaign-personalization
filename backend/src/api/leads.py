@@ -116,7 +116,9 @@ async def delete_lead(campaign_id: str, lead_id: str):
 
 @detail_router.get("/{lead_id}", response_model=LeadDetailResponse)
 async def get_lead_detail(lead_id: str):
-    """Get detailed information about a specific lead including campaign context"""
+    """
+    Get detailed information about a specific lead including campaign context
+    """
     with get_cursor() as cur:
         cur.execute("""
             SELECT 
@@ -137,7 +139,9 @@ async def get_lead_detail(lead_id: str):
 
 @detail_router.get("/{lead_id}/activity", response_model=List[EmailActivityResponse])
 async def get_lead_activity(lead_id: str, campaign_id: str):
-    """Get email activity for a specific lead in a specific campaign"""
+    """
+    Get email activity for a specific lead in a specific campaign
+    """
     with get_cursor() as cur:
         # Verify lead belongs to campaign
         cur.execute(
@@ -160,7 +164,9 @@ async def get_lead_activity(lead_id: str, campaign_id: str):
 
 @detail_router.patch("/{lead_id}", response_model=LeadResponse)
 async def update_lead(lead_id: str, update: LeadUpdate):
-    """Update lead information (notes, status, has_replied)"""
+    """
+    Update lead information (notes, status, has_replied)
+    """
     # Build dynamic update query
     updates = []
     params = []

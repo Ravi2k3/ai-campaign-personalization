@@ -59,7 +59,7 @@ export default function CreateCampaignModal({
 
     const validateDelayFields = (days: number, hours: number, minutes: number) => {
         const errors: typeof fieldErrors = {}
-        
+
         if (days < 0 || days > 30) {
             errors.delay_days = "Days must be between 0 and 30"
         }
@@ -69,12 +69,12 @@ export default function CreateCampaignModal({
         if (minutes < 0 || minutes > 59) {
             errors.delay_minutes = "Minutes must be between 0 and 59"
         }
-        
+
         const totalMinutes = (days * 24 * 60) + (hours * 60) + minutes
         if (totalMinutes < 1) {
             errors.delay_total = "Total delay must be at least 1 minute"
         }
-        
+
         setFieldErrors(prev => ({
             ...prev,
             delay_days: errors.delay_days,
@@ -82,7 +82,7 @@ export default function CreateCampaignModal({
             delay_minutes: errors.delay_minutes,
             delay_total: errors.delay_total,
         }))
-        
+
         return !errors.delay_days && !errors.delay_hours && !errors.delay_minutes && !errors.delay_total
     }
 
@@ -115,6 +115,11 @@ export default function CreateCampaignModal({
 
         const isMaxFollowUpsValid = validateMaxFollowUps(form.max_follow_ups)
         const isDelayValid = validateDelayFields(delayDays, delayHours, delayMinutes)
+
+        if (!form.goal.trim()) {
+            setError("Campaign goal is required")
+            return
+        }
 
         if (!isMaxFollowUpsValid || !isDelayValid) {
             return
@@ -270,7 +275,7 @@ export default function CreateCampaignModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="goal">Campaign Goal (Optional)</Label>
+                        <Label htmlFor="goal">Campaign Goal</Label>
                         <textarea
                             id="goal"
                             value={form.goal}
