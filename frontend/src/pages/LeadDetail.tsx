@@ -208,18 +208,14 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    {lead.company && (
-                                        <div className="flex items-center gap-2">
-                                            <Building2 size={16} className="text-muted-foreground" />
-                                            <span>{lead.company}</span>
-                                        </div>
-                                    )}
-                                    {lead.title && (
-                                        <div className="flex items-center gap-2">
-                                            <Briefcase size={16} className="text-muted-foreground" />
-                                            <span>{lead.title}</span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <Building2 size={16} className="text-muted-foreground" />
+                                        <span>{lead.company || "-"}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Briefcase size={16} className="text-muted-foreground" />
+                                        <span>{lead.title || "-"}</span>
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center gap-4 pt-2 border-t">
