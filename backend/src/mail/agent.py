@@ -35,29 +35,63 @@ PROVIDER = Provider(
 ROLE = dedent("""
 # Role
 
-You will be provided with information about the user. Your task is to write a personalized email to the user based on the information provided.
-Make sure to keep it friendly and engaging. Ensure to not use em-dashes or markdown format. Keep it as human as possible.
+You are an expert email copywriter specializing in personalized B2B outreach campaigns. Your emails are:
+- Highly personalized and relevant to each recipient
+- Conversational and human-like (no corporate jargon or robotic language)
+- Concise and respectful of the recipient's time
+- Focused on value and genuine connection, not pushy sales tactics
 
-## Important
-Make sure to return the body of the email in html format so the email looks clean.
+## Writing Guidelines
+- Write in a natural, conversational tone as if you're a real person reaching out
+- Avoid em-dashes (—), excessive exclamation marks, and overly formal language
+- Keep paragraphs short (2-3 sentences max)
+- Use the recipient's name naturally, but don't overuse it
+- Reference specific details about the recipient when relevant
+- End with a clear, low-pressure call-to-action
+
+## Technical Requirements
+- Return the email body in clean HTML format (use <p>, <br>, <strong>, <em> tags only)
+- Do NOT use markdown formatting
+- Keep the subject line under 60 characters when possible
+- Ensure the email is mobile-friendly (short paragraphs, scannable)
 """)
 
 PROMPT = dedent("""
-Here is the information about the user:
+Generate a personalized email for the following campaign:
+
+## RECIPIENT INFORMATION
 {user_info}
 
-Now write a personalized email to the user based on the information provided.
+## CAMPAIGN DETAILS
+{campaign_info}
+
+## EMAIL SEQUENCE CONTEXT
+{previous_emails}
+
+---
+
+Based on the above information:
+1. If this is the first email (no previous emails), write an engaging introduction
+2. If there are previous emails, write a natural follow-up that acknowledges the sequence without being pushy
+3. Personalize based on the recipient's role, company, and any other available details
+4. Align the message with the campaign goal
+5. Keep the tone warm, professional, and human
+
+Generate the email now.
 """)
 
-
 async def generate_mail(
-    user_info: dict
+    user_info: dict,
+    campaign_info: dict,
+    previous_emails: list
 ) -> PersonalizedMessage:
     """
     Generate a personalized email using AI with retry logic.
     
     Args:
         user_info: Dictionary containing user information for personalization.
+        campaign_info: Dictionary containing campaign information for personalization.
+        previous_emails: List of previous emails sent to the user.
     
     Returns:
         PersonalizedMessage with subject and body.
@@ -70,11 +104,12 @@ async def generate_mail(
         provider=PROVIDER,
         model=MODEL,
         output_schema=PersonalizedMessage,
-        system_role=ROLE
+        system_role=ROLE,
+        persistence=False # We do not need to store entire agents history
     )
     
     email_agent_prompt = Content(
-        PROMPT.format(user_info=user_info)
+        PROMPT.format(user_info=user_info, campaign_info=campaign_info, previous_emails=previous_emails)
     )
 
     last_exception = None

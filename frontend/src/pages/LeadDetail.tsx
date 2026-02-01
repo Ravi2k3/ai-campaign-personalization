@@ -61,6 +61,186 @@ function formatDate(dateString: string | null) {
     return date.toLocaleString()
 }
 
+function LeadInfoCard({
+    loading,
+    lead
+}: {
+    loading: boolean;
+    lead: Lead | null
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Lead Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <div className="space-y-3">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                        <Skeleton className="h-4 w-56" />
+                    </div>
+                ) : lead ? (
+                    <div className="space-y-4">
+                        <div>
+                            <h2 className="text-2xl font-bold">{lead.first_name} {lead.last_name}</h2>
+                            <div className="flex items-center gap-2 mt-2">
+                                <Mail size={16} className="text-muted-foreground" />
+                                <a href={`mailto:${lead.email}`} className="text-primary hover:underline">
+                                    {lead.email}
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-2">
+                                <Building2 size={16} className="text-muted-foreground" />
+                                <span>{lead.company || "-"}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Briefcase size={16} className="text-muted-foreground" />
+                                <span>{lead.title || "-"}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 pt-2 border-t">
+                            <div>
+                                <p className="text-xs text-muted-foreground mb-1">Status</p>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${getLeadStatusColor(lead.status)}`}>
+                                    {lead.status}
+                                </span>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground mb-1">Sequence</p>
+                                <span className="font-medium">{lead.current_sequence}</span>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground mb-1">Replied</p>
+                                <span className="font-medium">{lead.has_replied ? "Yes" : "No"}</span>
+                            </div>
+                            {lead.next_email_at && (
+                                <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Next Email</p>
+                                    <span className="text-sm">{formatDate(lead.next_email_at)}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
+            </CardContent>
+        </Card>
+    )
+}
+
+function ActivityTimeline({
+    loading,
+    activity
+}: {
+    loading: boolean;
+    activity: EmailActivity[]
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Email Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <div className="space-y-3">
+                        {[1, 2, 3].map(i => (
+                            <Skeleton key={i} className="h-20 w-full" />
+                        ))}
+                    </div>
+                ) : activity.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                        No emails sent yet
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {activity.map((email) => (
+                            <div key={email.id} className="border rounded-lg p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        {email.status === "sent" ? (
+                                            <Send size={16} className="text-green-600" />
+                                        ) : email.status === "pending" ? (
+                                            <Clock size={16} className="text-yellow-600" />
+                                        ) : (
+                                            <AlertCircle size={16} className="text-red-600" />
+                                        )}
+                                        <span className="font-medium">Email #{email.sequence_number}</span>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
+                                        {email.status}
+                                    </span>
+                                </div>
+                                <p className="font-medium mb-1">{email.subject}</p>
+                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{email.body}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {email.sent_at ? `Sent: ${formatDate(email.sent_at)}` : `Created: ${formatDate(email.created_at)}`}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+function NotesCard({
+    notes,
+    setNotes,
+    handleSaveNotes,
+    marking,
+    handleMarkAsReplied,
+    loading,
+    saving,
+    leadReplied
+}: {
+    notes: string;
+    setNotes: (notes: string) => void;
+    handleSaveNotes: () => void;
+    marking: boolean;
+    handleMarkAsReplied: () => void;
+    loading: boolean;
+    saving: boolean;
+    leadReplied: boolean;
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add campaign-specific notes about this lead..."
+                    className="min-h-[120px]"
+                    disabled={loading}
+                />
+                <div className="flex gap-2">
+                    <Button onClick={handleSaveNotes} disabled={saving || loading}>
+                        {saving ? "Saving..." : "Save Notes"}
+                    </Button>
+                    {leadReplied && (
+                        <Button
+                            variant="outline"
+                            onClick={handleMarkAsReplied}
+                            disabled={marking || loading}
+                            className="gap-2"
+                        >
+                            <CheckCircle2 size={16} />
+                            {marking ? "Marking..." : "Mark as Replied"}
+                        </Button>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function LeadDetail() {
     const { campaignId, leadId } = useParams<{ campaignId: string; leadId: string }>()
     const [lead, setLead] = useState<Lead | null>(null)
@@ -184,145 +364,28 @@ export default function LeadDetail() {
                 </Link>
 
                 {/* Lead Info Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Lead Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {loading ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-6 w-48" />
-                                <Skeleton className="h-4 w-64" />
-                                <Skeleton className="h-4 w-56" />
-                            </div>
-                        ) : lead ? (
-                            <div className="space-y-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold">{lead.first_name} {lead.last_name}</h2>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <Mail size={16} className="text-muted-foreground" />
-                                        <a href={`mailto:${lead.email}`} className="text-primary hover:underline">
-                                            {lead.email}
-                                        </a>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <Building2 size={16} className="text-muted-foreground" />
-                                        <span>{lead.company || "-"}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Briefcase size={16} className="text-muted-foreground" />
-                                        <span>{lead.title || "-"}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-4 pt-2 border-t">
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Status</p>
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${getLeadStatusColor(lead.status)}`}>
-                                            {lead.status}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Sequence</p>
-                                        <span className="font-medium">{lead.current_sequence}</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Replied</p>
-                                        <span className="font-medium">{lead.has_replied ? "Yes" : "No"}</span>
-                                    </div>
-                                    {lead.next_email_at && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Next Email</p>
-                                            <span className="text-sm">{formatDate(lead.next_email_at)}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : null}
-                    </CardContent>
-                </Card>
+                <LeadInfoCard
+                    loading={loading}
+                    lead={lead}
+                />
 
                 {/* Activity Timeline */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Email Activity</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {loading ? (
-                            <div className="space-y-3">
-                                {[1, 2, 3].map(i => (
-                                    <Skeleton key={i} className="h-20 w-full" />
-                                ))}
-                            </div>
-                        ) : activity.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                                No emails sent yet
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {activity.map((email) => (
-                                    <div key={email.id} className="border rounded-lg p-4">
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                {email.status === "sent" ? (
-                                                    <Send size={16} className="text-green-600" />
-                                                ) : email.status === "pending" ? (
-                                                    <Clock size={16} className="text-yellow-600" />
-                                                ) : (
-                                                    <AlertCircle size={16} className="text-red-600" />
-                                                )}
-                                                <span className="font-medium">Email #{email.sequence_number}</span>
-                                            </div>
-                                            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
-                                                {email.status}
-                                            </span>
-                                        </div>
-                                        <p className="font-medium mb-1">{email.subject}</p>
-                                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{email.body}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {email.sent_at ? `Sent: ${formatDate(email.sent_at)}` : `Created: ${formatDate(email.created_at)}`}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <ActivityTimeline
+                    loading={loading}
+                    activity={activity}
+                />
 
                 {/* Notes Section */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Add campaign-specific notes about this lead..."
-                            className="min-h-[120px]"
-                            disabled={loading}
-                        />
-                        <div className="flex gap-2">
-                            <Button onClick={handleSaveNotes} disabled={saving || loading}>
-                                {saving ? "Saving..." : "Save Notes"}
-                            </Button>
-                            {lead && !lead.has_replied && (
-                                <Button
-                                    variant="outline"
-                                    onClick={handleMarkAsReplied}
-                                    disabled={marking || loading}
-                                    className="gap-2"
-                                >
-                                    <CheckCircle2 size={16} />
-                                    {marking ? "Marking..." : "Mark as Replied"}
-                                </Button>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                <NotesCard
+                    loading={loading}
+                    notes={notes}
+                    setNotes={setNotes}
+                    handleSaveNotes={handleSaveNotes}
+                    marking={marking}
+                    handleMarkAsReplied={handleMarkAsReplied}
+                    saving={saving}
+                    leadReplied={lead !== null && !lead.has_replied}
+                />
             </div>
         </div>
     )
