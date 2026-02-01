@@ -15,7 +15,19 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft, Upload, UserPlus, Clock, RefreshCw, Users, Search, Play, Pause, Trash2 } from "lucide-react"
+import { 
+    ArrowLeft, 
+    Upload, 
+    UserPlus, 
+    Clock, 
+    RefreshCw, 
+    Users, 
+    Search, 
+    Play, 
+    Pause, 
+    Trash2, 
+    ExternalLink 
+} from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
 import DeleteCampaignModal from "@/components/DeleteCampaignModal"
@@ -278,11 +290,14 @@ function LeadsTable({ leads, campaignId }: { leads: Lead[], campaignId: string }
                 {leads.map((lead) => (
                     <TableRow
                         key={lead.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="cursor-pointer hover:bg-muted/50 transition-colors group"
                         onClick={() => window.location.href = `/campaigns/${campaignId}/leads/${lead.id}`}
                     >
                         <TableCell className="font-medium">
-                            {lead.first_name} {lead.last_name}
+                            <span className="inline-flex items-center gap-2 text-primary group-hover:underline">
+                                <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                                {lead.first_name} {lead.last_name}
+                            </span>
                         </TableCell>
                         <TableCell>{lead.email}</TableCell>
                         <TableCell>{lead.company || "—"}</TableCell>

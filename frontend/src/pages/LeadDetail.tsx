@@ -6,7 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Mail, Building2, Briefcase, CheckCircle2, Clock, Send, AlertCircle } from "lucide-react"
+import { 
+    ArrowLeft, 
+    Mail, 
+    Building2, 
+    Briefcase, 
+    CheckCircle2, 
+    Clock, 
+    Send, 
+    AlertCircle, 
+    Trash2 
+} from "lucide-react"
+import DeleteLeadModal from "@/components/DeleteLeadModal"
 
 type Lead = {
     id: string
@@ -250,6 +261,7 @@ export default function LeadDetail() {
     const [notes, setNotes] = useState("")
     const [saving, setSaving] = useState(false)
     const [marking, setMarking] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
 
     const fetchData = async () => {
         if (!leadId || !campaignId) return
@@ -354,14 +366,27 @@ export default function LeadDetail() {
     return (
         <div className="min-h-screen bg-background p-8">
             <div className="max-w-4xl mx-auto space-y-6">
-                {/* Back link */}
-                <Link
-                    to={`/campaigns/${campaignId}`}
-                    className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                >
-                    <ArrowLeft size={16} />
-                    Back to {loading ? "Campaign" : lead?.campaign_name}
-                </Link>
+                {/* Header with back link and delete button */}
+                <div className="flex justify-between items-center">
+                    <Link
+                        to={`/campaigns/${campaignId}`}
+                        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                        <ArrowLeft size={16} />
+                        Back to {loading ? "Campaign" : lead?.campaign_name}
+                    </Link>
+                    {loading ? (
+                        <Skeleton className="h-10 w-10" />
+                    ) : lead && (
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setShowDeleteModal(true)}
+                        >
+                            <Trash2 color="#ef4343" size={16} />
+                        </Button>
+                    )}
+                </div>
 
                 {/* Lead Info Card */}
                 <LeadInfoCard
@@ -386,6 +411,17 @@ export default function LeadDetail() {
                     saving={saving}
                     leadReplied={lead !== null && !lead.has_replied}
                 />
+
+                {/* Delete Lead Modal */}
+                {lead && campaignId && (
+                    <DeleteLeadModal
+                        open={showDeleteModal}
+                        onClose={() => setShowDeleteModal(false)}
+                        campaignId={campaignId}
+                        leadId={lead.id}
+                        leadName={`${lead.first_name} ${lead.last_name}`}
+                    />
+                )}
             </div>
         </div>
     )

@@ -3,7 +3,13 @@ import { Link } from "react-router-dom"
 import { get } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { 
+    Card,
+    CardContent, 
+    CardDescription, 
+    CardHeader, 
+    CardTitle 
+} from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, Mail, Users } from "lucide-react"
 import CreateCampaignModal from "@/components/CreateCampaignModal"
@@ -38,7 +44,7 @@ function CampaignHeader({
     setSearchQuery: (query: string) => void
 }) {
     return (
-        <div className="space-y-4 mb-8">
+        <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">Campaigns</h1>
@@ -52,7 +58,7 @@ function CampaignHeader({
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                 <Input
-                    placeholder="Search by name, goal, or sender..."
+                    placeholder="Search by name, goal, sender, or status..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -182,6 +188,7 @@ export default function Campaigns() {
             c.name.toLowerCase().includes(query) ||
             c.sender_name.toLowerCase().includes(query) ||
             c.sender_email.toLowerCase().includes(query) ||
+            c.status.toLowerCase().includes(query) ||
             (c.goal && c.goal.toLowerCase().includes(query))
         )
     }, [campaigns, searchQuery])
@@ -192,30 +199,36 @@ export default function Campaigns() {
     }
 
     return (
-        <div className="min-h-screen bg-background p-8">
-            <div className="max-w-6xl mx-auto">
-                <CampaignHeader
-                    setShowModal={setShowModal}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                />
-
-                {error ? (
-                    <div className="text-destructive bg-destructive/10 p-4 rounded-lg">{error}</div>
-                ) : (
-                    <CampaignContent
-                        campaigns={filteredCampaigns}
+        <div className="h-screen bg-background flex flex-col">
+            <div className="sticky top-0 z-10 bg-background px-8 pt-8 pb-4 border-b">
+                <div className="max-w-6xl mx-auto">
+                    <CampaignHeader
                         setShowModal={setShowModal}
-                        loading={loading}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
                     />
-                )}
-
-                <CreateCampaignModal
-                    open={showModal}
-                    onClose={() => setShowModal(false)}
-                    onSuccess={handleCampaignCreated}
-                />
+                </div>
             </div>
+
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+                <div className="max-w-6xl mx-auto">
+                    {error ? (
+                        <div className="text-destructive bg-destructive/10 p-4 rounded-lg">{error}</div>
+                    ) : (
+                        <CampaignContent
+                            campaigns={filteredCampaigns}
+                            setShowModal={setShowModal}
+                            loading={loading}
+                        />
+                    )}
+                </div>
+            </div>
+
+            <CreateCampaignModal
+                open={showModal}
+                onClose={() => setShowModal(false)}
+                onSuccess={handleCampaignCreated}
+            />
         </div>
     )
 }
