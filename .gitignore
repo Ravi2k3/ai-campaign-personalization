@@ -85,3 +85,4 @@ ENV/
 .vercel
 .netlify
 pyrefly.toml
+todo.md
