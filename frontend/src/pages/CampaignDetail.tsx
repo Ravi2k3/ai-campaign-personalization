@@ -66,12 +66,12 @@ function LeadsTableSkeleton() {
             <TableBody>
                 {[1, 2, 3, 4, 5].map((i) => (
                     <TableRow key={i}>
-                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full max-w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full max-w-40" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full max-w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full max-w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full max-w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full max-w-8" /></TableCell>
                     </TableRow>
                 ))}
             </TableBody>
@@ -91,12 +91,12 @@ function CampaignDetailsHeader({
     setShowImportCSV: (show: boolean) => void
 }) {
     return (
-        <div className="flex justify-between items-start mb-8">
-            <div>
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
+            <div className="min-w-0 w-full sm:flex-1">
                 {loading ? (
                     <>
-                        <Skeleton className="h-8 w-48 mb-2" />
-                        <Skeleton className="h-4 w-64" />
+                        <Skeleton className="h-8 w-full max-w-48 mb-2" />
+                        <Skeleton className="h-4 w-full max-w-64" />
                     </>
                 ) : (
                     <>
@@ -107,7 +107,7 @@ function CampaignDetailsHeader({
                     </>
                 )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
                 <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2">
                     <Upload size={16} />
                     Import CSV
@@ -158,8 +158,8 @@ function CampaignInfoCard({
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[1, 2, 3, 4].map(i => (
                             <div key={i} className="space-y-1">
-                                <Skeleton className="h-3 w-16" />
-                                <Skeleton className="h-5 w-24" />
+                                <Skeleton className="h-3 w-full max-w-16" />
+                                <Skeleton className="h-5 w-full max-w-24" />
                             </div>
                         ))}
                     </div>
