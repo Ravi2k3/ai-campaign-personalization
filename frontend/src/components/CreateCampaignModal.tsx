@@ -26,6 +26,7 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
         sender_name: "",
         sender_email: "",
         goal: "",
+        max_follow_ups: 3,
     })
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +36,7 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
 
         try {
             await post("/campaigns", form)
-            setForm({ name: "", sender_name: "", sender_email: "", goal: "" })
+            setForm({ name: "", sender_name: "", sender_email: "", goal: "", max_follow_ups: 3 })
             onSuccess()
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create campaign")
@@ -66,27 +67,44 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="sender_name">Sender Name</Label>
-                        <Input
-                            id="sender_name"
-                            required
-                            value={form.sender_name}
-                            onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
-                            placeholder="John Doe"
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="sender_name">Sender Name</Label>
+                            <Input
+                                id="sender_name"
+                                required
+                                value={form.sender_name}
+                                onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
+                                placeholder="John Doe"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="sender_email">Reply-To Email</Label>
+                            <Input
+                                id="sender_email"
+                                type="email"
+                                required
+                                value={form.sender_email}
+                                onChange={(e) => setForm({ ...form, sender_email: e.target.value })}
+                                placeholder="john@company.com"
+                            />
+                        </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="sender_email">Sender Email (Reply-To)</Label>
+                        <Label htmlFor="max_follow_ups">Max Follow-ups</Label>
                         <Input
-                            id="sender_email"
-                            type="email"
-                            required
-                            value={form.sender_email}
-                            onChange={(e) => setForm({ ...form, sender_email: e.target.value })}
-                            placeholder="john@company.com"
+                            id="max_follow_ups"
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={form.max_follow_ups}
+                            onChange={(e) => setForm({ ...form, max_follow_ups: parseInt(e.target.value) || 3 })}
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Number of follow-up emails before stopping (1-10)
+                        </p>
                     </div>
 
                     <div className="space-y-2">

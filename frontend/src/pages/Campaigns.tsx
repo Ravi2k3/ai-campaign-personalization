@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { get } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Plus, Search, Mail, Users } from "lucide-react"
 import CreateCampaignModal from "@/components/CreateCampaignModal"
 
 type Campaign = {
@@ -9,77 +12,135 @@ type Campaign = {
     name: string
     sender_name: string
     sender_email: string
+    goal: string | null
+    max_follow_ups: number
     status: string
     created_at: string
 }
 
-function CampaignHeader(
-    { setShowModal }:
-        { setShowModal: (show: boolean) => void }
-) {
-    return (
-        <div className="flex justify-between items-center mb-8">
-            <div>
-                <h1 className="text-3xl font-bold">Campaigns</h1>
-                <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
-            </div>
-            <Button onClick={() => setShowModal(true)} className="gap-2">
-                <Plus size={18} />
-                Create Campaign
-            </Button>
-        </div>
-    )
+function getStatusColor(status: string) {
+    switch (status) {
+        case "active": return "bg-green-100 text-green-700"
+        case "paused": return "bg-yellow-100 text-yellow-700"
+        case "completed": return "bg-blue-100 text-blue-700"
+        default: return "bg-muted text-muted-foreground"
+    }
 }
 
-function CampaignCard(
-    { campaign }:
-        { campaign: Campaign }
-) {
+function CampaignHeader({
+    setShowModal,
+    searchQuery,
+    setSearchQuery
+}: {
+    setShowModal: (show: boolean) => void
+    searchQuery: string
+    setSearchQuery: (query: string) => void
+}) {
     return (
-        <div
-            key={campaign.id}
-            className="p-4 bg-card border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
-        >
-            <div className="flex justify-between items-start">
+        <div className="space-y-4 mb-8">
+            <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="font-semibold text-lg">{campaign.name}</h3>
-                    <p className="text-muted-foreground text-sm">
-                        {campaign.sender_name} &lt;{campaign.sender_email}&gt;
-                    </p>
+                    <h1 className="text-3xl font-bold">Campaigns</h1>
+                    <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${campaign.status === "active" ? "bg-green-100 text-green-700" :
-                    campaign.status === "paused" ? "bg-yellow-100 text-yellow-700" :
-                        campaign.status === "completed" ? "bg-blue-100 text-blue-700" :
-                            "bg-muted text-muted-foreground"
-                    }`}>
-                    {campaign.status}
-                </span>
+                <Button onClick={() => setShowModal(true)} className="gap-2">
+                    <Plus size={18} />
+                    Create Campaign
+                </Button>
+            </div>
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <Input
+                    placeholder="Search by name, goal, or sender..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                />
             </div>
         </div>
     )
 }
 
-function CampaignContent(
-    { campaigns, setShowModal }:
-        {
-            campaigns: Campaign[],
-            setShowModal: (show: boolean) => void
-        }
-) {
+function CampaignCard({ campaign }: { campaign: Campaign }) {
+    return (
+        <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                        {campaign.status}
+                    </span>
+                </div>
+                <CardDescription className="line-clamp-2">
+                    {campaign.goal || "No goal specified"}
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail size={14} />
+                    <span>{campaign.sender_name} &lt;{campaign.sender_email}&gt;</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users size={14} />
+                    <span>Max {campaign.max_follow_ups} follow-ups</span>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
+function CampaignSkeleton() {
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-4 w-full mt-2" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-32" />
+            </CardContent>
+        </Card>
+    )
+}
+
+function CampaignContent({
+    campaigns,
+    setShowModal,
+    loading
+}: {
+    campaigns: Campaign[]
+    setShowModal: (show: boolean) => void
+    loading: boolean
+}) {
+    if (loading) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CampaignSkeleton />
+                <CampaignSkeleton />
+                <CampaignSkeleton />
+                <CampaignSkeleton />
+            </div>
+        )
+    }
+
     if (campaigns.length === 0) {
         return (
             <div className="text-center py-16 border border-dashed rounded-lg">
-                <p className="text-muted-foreground mb-4">No campaigns yet</p>
+                <p className="text-muted-foreground mb-4">No campaigns found</p>
                 <Button onClick={() => setShowModal(true)} variant="outline" className="gap-2">
                     <Plus size={18} />
-                    Create your first campaign
+                    Create a campaign
                 </Button>
             </div>
         )
     }
 
     return (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {campaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
             ))}
@@ -92,6 +153,7 @@ export default function Campaigns() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showModal, setShowModal] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
 
     const fetchCampaigns = async () => {
         try {
@@ -110,6 +172,17 @@ export default function Campaigns() {
         fetchCampaigns()
     }, [])
 
+    const filteredCampaigns = useMemo(() => {
+        if (!searchQuery.trim()) return campaigns
+        const query = searchQuery.toLowerCase()
+        return campaigns.filter(c =>
+            c.name.toLowerCase().includes(query) ||
+            c.sender_name.toLowerCase().includes(query) ||
+            c.sender_email.toLowerCase().includes(query) ||
+            (c.goal && c.goal.toLowerCase().includes(query))
+        )
+    }, [campaigns, searchQuery])
+
     const handleCampaignCreated = () => {
         setShowModal(false)
         fetchCampaigns()
@@ -118,19 +191,22 @@ export default function Campaigns() {
     return (
         <div className="min-h-screen bg-background p-8">
             <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <CampaignHeader setShowModal={setShowModal} />
+                <CampaignHeader
+                    setShowModal={setShowModal}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                />
 
-                {/* Content */}
-                {loading ? (
-                    <div className="text-muted-foreground">Loading campaigns...</div>
-                ) : error ? (
+                {error ? (
                     <div className="text-destructive bg-destructive/10 p-4 rounded-lg">{error}</div>
                 ) : (
-                    <CampaignContent campaigns={campaigns} setShowModal={setShowModal} />
+                    <CampaignContent
+                        campaigns={filteredCampaigns}
+                        setShowModal={setShowModal}
+                        loading={loading}
+                    />
                 )}
 
-                {/* Modal */}
                 <CreateCampaignModal
                     open={showModal}
                     onClose={() => setShowModal(false)}
