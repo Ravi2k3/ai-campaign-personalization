@@ -15,18 +15,18 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { 
-    ArrowLeft, 
-    Upload, 
-    UserPlus, 
-    Clock, 
-    RefreshCw, 
-    Users, 
-    Search, 
-    Play, 
-    Pause, 
-    Trash2, 
-    ExternalLink 
+import {
+    ArrowLeft,
+    Upload,
+    UserPlus,
+    Clock,
+    RefreshCw,
+    Users,
+    Search,
+    Play,
+    Pause,
+    Trash2,
+    ExternalLink
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
@@ -163,14 +163,18 @@ function CampaignDetailsHeader({
                                 )}
                             </Button>
                         )}
-                        <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2">
-                            <Upload size={16} />
-                            Import CSV
-                        </Button>
-                        <Button onClick={() => setShowAddLead(true)} className="gap-2">
-                            <UserPlus size={16} />
-                            Add Lead
-                        </Button>
+                        {campaign?.status !== 'completed' && (
+                            <>
+                                <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2">
+                                    <Upload size={16} />
+                                    Import CSV
+                                </Button>
+                                <Button onClick={() => setShowAddLead(true)} className="gap-2">
+                                    <UserPlus size={16} />
+                                    Add Lead
+                                </Button>
+                            </>
+                        )}
                         <Button variant="outline" size="icon" onClick={onDelete}>
                             <Trash2 color="#ef4343" size={16} />
                         </Button>

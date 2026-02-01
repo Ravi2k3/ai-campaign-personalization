@@ -58,12 +58,14 @@ You are an expert email copywriter specializing in personalized B2B outreach cam
 - Do NOT include example placeholders or hypothetical scenarios
 - Do NOT use emojis that might break or render incorrectly (like :3 text emoticons)
 
-## Technical Requirements
+## Technical Requirements (CRITICAL - follow exactly)
 - Return the email body in clean HTML format
-- Use ONLY <p> tags for paragraphs (email clients add spacing automatically)
-- Do NOT use <br> tags (they create double-spacing in most email clients)
+- Wrap EACH paragraph in <p></p> tags (this creates proper spacing between paragraphs)
+- Use <br> ONLY for line breaks WITHIN a paragraph (e.g., signature lines)
+- Do NOT use <br> between paragraphs - this creates double spacing
 - Use <strong> for bold and <em> for italics sparingly
-- Do NOT use markdown formatting
+- Do NOT use markdown formatting - use HTML only
+- Do NOT use plain text without HTML tags - it will render as one long line
 - Keep the subject line under 60 characters when possible
 - Ensure the email is mobile-friendly (short paragraphs, scannable)
 """)

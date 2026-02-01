@@ -1,4 +1,4 @@
-import asyncio, functools, uuid
+import asyncio, functools, hashlib
 
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple
@@ -419,8 +419,17 @@ async def process_leads_job() -> None:
             )
             mails_to_send.append(mail)
         
-        # Single idempotency key for the whole batch
-        batch_idempotency_key = f"batch-run/{uuid.uuid4()}"
+        # Create a deterministic idempotency key based on the leads in this batch.
+        # If the server crashes after sending but before DB update, these exact same
+        # leads will be picked up again, generating the SAME key. Resend will then
+        # reject the duplicate send (crash recovery protection).
+        batch_signature = sorted([
+            f"{gen['lead_id']}-{gen['sequence_number']}" 
+            for gen in successful_generations
+        ])
+        batch_string = "|".join(batch_signature)
+        batch_hash = hashlib.sha256(batch_string.encode()).hexdigest()
+        batch_idempotency_key = f"batch-run/{batch_hash}"
         
         try:
             # Batch send (sync, in executor) with idempotency key

@@ -33,6 +33,14 @@ async def list_leads(campaign_id: str):
 @router.post("", response_model=LeadResponse)
 async def create_lead(campaign_id: str, lead: LeadCreate):
     with get_cursor(commit=True) as cur:
+        # Check if campaign is completed
+        cur.execute("SELECT status FROM campaigns WHERE id = %s", (campaign_id,))
+        campaign = cur.fetchone()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if campaign["status"] == "completed":
+            raise HTTPException(status_code=400, detail="Cannot add leads to a completed campaign")
+        
         # Check if lead already exists in this campaign
         cur.execute(
             "SELECT id FROM leads WHERE campaign_id = %s AND email = %s",
@@ -65,6 +73,14 @@ async def bulk_create_leads(campaign_id: str, data: LeadBulkCreate):
     
     created_leads = []
     with get_cursor(commit=True) as cur:
+        # Check if campaign is completed
+        cur.execute("SELECT status FROM campaigns WHERE id = %s", (campaign_id,))
+        campaign = cur.fetchone()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if campaign["status"] == "completed":
+            raise HTTPException(status_code=400, detail="Cannot add leads to a completed campaign")
+        
         # Get existing emails in this campaign
         cur.execute(
             "SELECT email FROM leads WHERE campaign_id = %s",
