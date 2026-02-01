@@ -56,6 +56,10 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      style={{
+        cursor: props.disabled ? "not-allowed" : "pointer",
+        opacity: props.disabled ? 0.5 : 1
+      }}
       {...props}
     />
   )

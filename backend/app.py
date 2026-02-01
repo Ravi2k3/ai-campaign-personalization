@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# type: ignore
-from src.db import init_db, test_connection
+from src.db import init_db, test_connection # type: ignore
+from src.api import campaigns_router        # type: ignore
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,6 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register routers
+app.include_router(campaigns_router)
+
 @app.get("/health")
 async def health_check():
     # Health check endpoint
@@ -46,12 +49,3 @@ async def health_check():
 @app.get("/")
 async def root():
     return {"message": "Everis AI Mail Personalization API"}
-
-@app.get("/dummy")
-async def dummy():
-    # Dummy endpoint for CORS testing
-    return {
-        "data": ["Campaign A", "Campaign B", "Campaign C"],
-        "count": 3,
-        "test": "CORS is working!"
-    }
