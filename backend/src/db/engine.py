@@ -68,7 +68,7 @@ def get_cursor(commit: bool = False):
             cur.close()
 
 def test_connection() -> bool:
-    """Test if database connection works."""
+    # Test if database connection works.
     try:
         with get_cursor() as cur:
             cur.execute("SELECT 1")

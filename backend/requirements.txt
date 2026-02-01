@@ -1,8 +1,7 @@
-moonlight-ai 
-python-dotenv 
-fastapi[standard] 
-psycopg2
-pydantic
-axiom-py
-resend
-axiom-py
+moonlight-ai==0.2.7
+python-dotenv==1.2.1
+fastapi[standard]==0.128.0
+psycopg2==2.9.11
+pydantic==2.12.5
+axiom-py==0.9.1
+resend==2.21.0
