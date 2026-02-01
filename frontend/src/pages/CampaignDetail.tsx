@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
 import { get } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
     Table,
     TableBody,
@@ -12,7 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft, Upload, UserPlus, Clock, RefreshCw, Users } from "lucide-react"
+import { ArrowLeft, Upload, UserPlus, Clock, RefreshCw, Users, Search } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
 
@@ -214,14 +215,6 @@ function CampaignInfoCard({
 }
 
 function LeadsTable({ leads }: { leads: Lead[] }) {
-    if (leads.length === 0) {
-        return (
-            <div className="text-center py-16 border border-dashed rounded-lg">
-                <p className="text-muted-foreground">No leads yet. Add leads manually or import from CSV.</p>
-            </div>
-        )
-    }
-
     return (
         <Table>
             <TableHeader className="sticky top-0 bg-background z-10 shadow-md">
@@ -256,6 +249,14 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
     )
 }
 
+function LeadsEmptyState() {
+    return (
+        <div className="text-center py-16 border border-dashed rounded-lg">
+            <p className="text-muted-foreground">No leads yet. Add leads manually or import from CSV.</p>
+        </div>
+    )
+}
+
 export default function CampaignDetail() {
     const { id } = useParams<{ id: string }>()
     const [campaign, setCampaign] = useState<Campaign | null>(null)
@@ -264,6 +265,22 @@ export default function CampaignDetail() {
     const [error, setError] = useState<string | null>(null)
     const [showAddLead, setShowAddLead] = useState(false)
     const [showImportCSV, setShowImportCSV] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+
+    const filteredLeads = useMemo(() => {
+        if (!searchQuery.trim()) return leads
+        const query = searchQuery.toLowerCase()
+        return leads.filter(lead =>
+            lead.first_name.toLowerCase().includes(query) ||
+            lead.last_name.toLowerCase().includes(query) ||
+            `${lead.first_name} ${lead.last_name}`.toLowerCase().includes(query) ||
+            lead.email.toLowerCase().includes(query) ||
+            (lead.company && lead.company.toLowerCase().includes(query)) ||
+            (lead.title && lead.title.toLowerCase().includes(query)) ||
+            lead.status.toLowerCase().includes(query) ||
+            lead.current_sequence.toString().includes(query)
+        )
+    }, [leads, searchQuery])
 
     const fetchData = async () => {
         try {
@@ -326,10 +343,33 @@ export default function CampaignDetail() {
                     <CampaignInfoCard campaign={campaign} leadsCount={leads.length} loading={loading} />
                 </div>
 
-                {/* Leads Table - min 30vh, grows to fill remaining space */}
-                <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
-                    {loading ? <LeadsTableSkeleton /> : <LeadsTable leads={leads} />}
+                <h1 className="text-3xl font-bold pb-3">Leads</h1>
+                
+                {/* Search Bar */}
+                <div className="flex-shrink-0 mb-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                        <Input
+                            placeholder="Search by name, email, company, title, status, or sequence..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
                 </div>
+
+                {/* Leads Table - min 30vh, grows to fill remaining space */}
+                {loading ? (
+                    <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
+                        <LeadsTableSkeleton />
+                    </div>
+                ) : filteredLeads.length === 0 ? (
+                    <LeadsEmptyState />
+                ) : (
+                    <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
+                        <LeadsTable leads={filteredLeads} />
+                    </div>
+                )}
 
                 {/* Modals */}
                 {id && (
