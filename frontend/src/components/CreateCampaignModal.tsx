@@ -21,6 +21,7 @@ type Props = {
 export default function CreateCampaignModal({ open, onClose, onSuccess }: Props) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [fieldErrors, setFieldErrors] = useState<{ max_follow_ups?: string }>({})
     const [form, setForm] = useState({
         name: "",
         sender_name: "",
@@ -29,14 +30,35 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
         max_follow_ups: 3,
     })
 
+    const validateMaxFollowUps = (value: number) => {
+        if (value < 1 || value > 10) {
+            setFieldErrors({ ...fieldErrors, max_follow_ups: "Must be between 1 and 10" })
+            return false
+        }
+        setFieldErrors({ ...fieldErrors, max_follow_ups: undefined })
+        return true
+    }
+
+    const handleMaxFollowUpsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseInt(e.target.value) || 0
+        setForm({ ...form, max_follow_ups: value })
+        validateMaxFollowUps(value)
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        if (!validateMaxFollowUps(form.max_follow_ups)) {
+            return
+        }
+
         setLoading(true)
         setError(null)
 
         try {
             await post("/campaigns", form)
             setForm({ name: "", sender_name: "", sender_email: "", goal: "", max_follow_ups: 3 })
+            setFieldErrors({})
             onSuccess()
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create campaign")
@@ -44,6 +66,8 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
             setLoading(false)
         }
     }
+
+    const hasFieldErrors = Object.values(fieldErrors).some(Boolean)
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -97,14 +121,17 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
                         <Input
                             id="max_follow_ups"
                             type="number"
-                            min={1}
-                            max={10}
                             value={form.max_follow_ups}
-                            onChange={(e) => setForm({ ...form, max_follow_ups: parseInt(e.target.value) || 3 })}
+                            onChange={handleMaxFollowUpsChange}
+                            className={fieldErrors.max_follow_ups ? "border-destructive" : ""}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Number of follow-up emails before stopping (1-10)
-                        </p>
+                        {fieldErrors.max_follow_ups ? (
+                            <p className="text-xs text-destructive">{fieldErrors.max_follow_ups}</p>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Number of follow-up emails before stopping (1-10)
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -126,7 +153,7 @@ export default function CreateCampaignModal({ open, onClose, onSuccess }: Props)
                         <Button type="button" variant="outline" onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading}>
+                        <Button type="submit" disabled={loading || hasFieldErrors}>
                             {loading ? "Creating..." : "Create Campaign"}
                         </Button>
                     </DialogFooter>

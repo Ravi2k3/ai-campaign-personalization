@@ -1,86 +1,78 @@
 # Everis - AI Mail Personalization
 
-A Mini-SaaS application that helps Sales Development Reps (SDRs) automate personalized email outreach at scale.
+> Mini-SaaS for automated, AI-powered email outreach
 
-## Overview
+## Features
 
-This application enables users to:
-- **Import Leads** – Upload CSV files with structured headers:
-  - Required: `email`, `first_name`, `last_name`, `company`, `title`
-  - Optional: `linkedin_url`, `industry`, `notes` (for personalization context)
-- **AI-Powered Personalization** – Generate human-like, relevant emails using LLMs based on lead data
-- **Automated Follow-ups** – Schedule and send follow-up emails based on configurable wait periods
-- **Reply Tracking** – Mark leads as replied (simulated button or webhook-based)
-
-## Design Principles
-
-- Ship a polished core before adding features
-- Prefer boring, reliable infrastructure
-- Optimize for demoability and clarity
-- Avoid background magic that’s hard to explain
+- **Campaign Management** – Create and manage email outreach campaigns
+- **AI Personalization** – Generate human-like emails using LLMs
+- **Lead Import** – CSV upload with structured lead data
+- **Auto Follow-ups** – Configurable follow-up sequences
+- **Reply Tracking** – Track engagement and replies
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Frontend | React + Vite + TypeScript | UI with shadcn/ui components |
-| Styling | Tailwind CSS | Utility-first CSS |
-| Backend | Python (FastAPI) | REST API |
-| Logging | Axiom | Cloud logging |
-| Database | Supabase (Postgres) | Data persistence + real-time |
-| Email | Resend | Transactional email delivery |
-| LLM | OpenAI-compatible LLM | AI-powered email personalization |
+| Frontend | Backend | Infrastructure |
+|----------|---------|----------------|
+| React + Vite | FastAPI | Supabase (Postgres) |
+| TypeScript | Python | Resend (Email) |
+| shadcn/ui | Pydantic | Axiom (Logging) |
+| Tailwind CSS | psycopg2 | Moonlight (LLM) |
 
-## Architecture
+## Quick Start
 
-```mermaid
-flowchart LR
-    subgraph Client
-        FE[Frontend<br/>React + Vite]
-    end
+```bash
+# Backend
+cd backend
 
-    subgraph Server
-        BE[Backend<br/>FastAPI]
-    end
+python -m venv venv
+venv\Scripts\activate # Windows. For Linux: source venv/bin/activate
+pip install -r requirements.txt
 
-    subgraph External
-        DB[(Supabase<br/>Postgres)]
-        EMAIL[Resend<br/>Email API]
-        LLM[Moonlight<br/>LLM API]
-        LOG[Axiom<br/>Cloud Logging]
-    end
-
-    subgraph Background
-        CRON[Scheduler<br/>Worker]
-    end
-
-    FE --> BE
-    BE --> DB
-    BE --> EMAIL
-    BE --> LLM
-    BE -.-> LOG
-    CRON --> DB
-    CRON --> EMAIL
-    CRON -.-> LOG
+uvicorn app:app --reload
 ```
 
-### Scheduling Strategy
-- A lightweight background worker polls the database every minute
-- Queries for pending follow-ups where `scheduled_at <= NOW()` and `has_replied = false`
-- Sends all due emails in batch, updates status
-
-### Reply Detection
-- **MVP**: Simulated reply button in UI marks lead as replied
-- **Stretch**: Resend inbound webhooks for real reply detection
+```bash
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
 
 ## Project Structure
 
 ```
-├── backend/       # Python FastAPI backend
-├── frontend/      # React + Vite frontend
+├── backend/
+│   ├── app.py              # FastAPI entry point
+│   └── src/
+│       ├── api/            # Route handlers
+│       ├── db/             # Database schema & queries
+│       ├── mail/           # Email generation & sending
+│       └── logger.py       # Axiom logging
+├── frontend/
+│   └── src/
+│       ├── components/     # UI components (shadcn)
+│       ├── pages/          # Route pages
+│       └── lib/            # Utilities & API client
 └── README.md
 ```
 
-## Getting Started
+## Environment Variables
 
-*Setup documentation coming soon*
+Place a .env in backend folder with the following content:
+
+```env
+RESEND_API_KEY = ...
+
+OPENROUTER_API_KEY = ...
+GROQ_API_KEY = ...
+
+DATABASE_URI = ...
+
+AXIOM_TOKEN = ...
+AXIOM_DATASET = ...
+```
+
+## Architecture
+
+![Architecture](assets/arch.png)
