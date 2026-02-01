@@ -22,6 +22,14 @@ async def list_leads(campaign_id: str):
 @router.post("", response_model=LeadResponse)
 async def create_lead(campaign_id: str, lead: LeadCreate):
     with get_cursor(commit=True) as cur:
+        # Check if lead already exists in this campaign
+        cur.execute(
+            "SELECT id FROM leads WHERE campaign_id = %s AND email = %s",
+            (campaign_id, lead.email)
+        )
+        if cur.fetchone():
+            raise HTTPException(status_code=409, detail="Lead with this email already exists in this campaign")
+        
         cur.execute("""
             INSERT INTO leads (campaign_id, email, first_name, last_name, company, title, notes)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -46,7 +54,23 @@ async def bulk_create_leads(campaign_id: str, data: LeadBulkCreate):
     
     created_leads = []
     with get_cursor(commit=True) as cur:
+        # Get existing emails in this campaign
+        cur.execute(
+            "SELECT email FROM leads WHERE campaign_id = %s",
+            (campaign_id,)
+        )
+        existing_emails = {row["email"] for row in cur.fetchall()}
+        
+        # Also track emails within this batch to avoid duplicates in the input
+        seen_emails = set()
+        
         for lead in data.leads:
+            # Skip if email already exists in campaign or already seen in this batch
+            if lead.email in existing_emails or lead.email in seen_emails:
+                continue
+            
+            seen_emails.add(lead.email)
+            
             cur.execute("""
                 INSERT INTO leads (campaign_id, email, first_name, last_name, company, title, notes)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)

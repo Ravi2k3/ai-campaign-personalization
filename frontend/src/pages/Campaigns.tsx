@@ -132,7 +132,7 @@ function CampaignContent({
 
     if (campaigns.length === 0) {
         return (
-            <div className="text-center py-16 border border-dashed rounded-lg">
+            <div className="text-center py-16 border border-dashed border-muted-foreground/50 rounded-lg">
                 <p className="text-muted-foreground mb-4">No campaigns found</p>
                 <Button onClick={() => setShowModal(true)} variant="outline" className="gap-2">
                     <Plus size={18} />

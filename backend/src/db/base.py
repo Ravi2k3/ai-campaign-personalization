@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS leads (
     next_email_at TIMESTAMPTZ,
     locked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(campaign_id, email)
 );
 """
 
