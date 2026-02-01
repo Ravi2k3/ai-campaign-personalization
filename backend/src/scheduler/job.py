@@ -278,15 +278,10 @@ def _check_campaign_completion(campaign_ids: List[str]) -> None:
               WHERE l.campaign_id = c.id 
                 AND l.status NOT IN ('completed', 'replied', 'failed')
           )
-        RETURNING c.id, c.name
     """
     
     with get_cursor(commit=True) as cur:
         cur.execute(query, (unique_campaign_ids,))
-        completed = cur.fetchall()
-        
-        for campaign in completed:
-            logger.info(f"Campaign '{campaign['name']}' (ID: {campaign['id']}) marked as completed - all leads processed")
 
 async def generate_email_for_lead(
     lead: Dict[str, Any], 
@@ -354,8 +349,6 @@ async def process_leads_job() -> None:
         
         if not leads:
             return
-        
-        logger.info(f"[CRON] Processing {len(leads)} eligible leads")
         
         # Step 2: Lock all leads at once
         lead_ids = [str(lead["lead_id"]) for lead in leads]
@@ -471,8 +464,6 @@ async def process_leads_job() -> None:
             # Step 7: Check if any campaigns are now complete
             campaign_ids = list(set(gen["lead"]["campaign_id"] for gen in successful_generations))
             await run_sync(_check_campaign_completion, campaign_ids)
-            
-            logger.info(f"[CRON] Sent {len(successful_generations)} emails successfully")
             
         except Exception as e:
             # Batch send failed - handle with retry logic
