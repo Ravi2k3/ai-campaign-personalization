@@ -1,4 +1,4 @@
-const API_URL = "http://everis-ai-mail-personalization:10000"
+const API_URL = "https://api.gautam-everis-demo.com"
 
 type RequestOptions = {
     method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
