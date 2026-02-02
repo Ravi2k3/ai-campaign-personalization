@@ -15,16 +15,16 @@
 
 ## Tech Stack
 
-| Layer     | Technology                | Purpose                                  |
-| --------- | ------------------------- | ---------------------------------------- |
-| Frontend  | React + Vite + TypeScript | Modern SPA with shadcn/ui components     |
-| Styling   | Tailwind CSS              | Utility-first CSS                        |
-| Backend   | Python (FastAPI)          | Async REST API                           |
-| Database  | PostgreSQL (Supabase)     | Data persistence                         |
-| Email     | Resend                    | Transactional email delivery with batch  |
-| LLM       | Groq / OpenAI-compatible  | AI-powered email personalization         |
-| Scheduler | APScheduler               | Background job processing                |
-| Logging   | Axiom                     | Centralized logging                      |
+| Layer     | Technology                | Purpose                                    |
+| --------- | ------------------------- | ------------------------------------------ |
+| Frontend  | React + Vite + TypeScript | Modern SPA with shadcn/ui components       |
+| Styling   | Tailwind CSS              | Utility-first CSS                          |
+| Backend   | Python (FastAPI)          | Async REST API                             |
+| Database  | PostgreSQL (Supabase)     | Data persistence                           |
+| Email     | Resend                    | Transactional email delivery with batching |
+| LLM       | Groq / OpenAI-compatible  | AI-powered email personalization           |
+| Scheduler | APScheduler               | Background job processing                  |
+| Logging   | Axiom                     | Centralized logging                        |
 
 ## Quick Start
 
@@ -141,21 +141,21 @@ pending → processing → active → completed
 
 ## API Endpoints
 
-| Method | Endpoint                          | Description              |
-| ------ | --------------------------------- | ------------------------ |
-| GET    | `/campaigns`                      | List all campaigns       |
-| POST   | `/campaigns`                      | Create campaign          |
-| GET    | `/campaigns/{id}`                 | Get campaign details     |
-| DELETE | `/campaigns/{id}`                 | Delete campaign          |
-| PATCH  | `/campaigns/{id}/status`          | Start/stop campaign      |
-| GET    | `/campaigns/{id}/leads`           | List campaign leads      |
-| POST   | `/campaigns/{id}/leads`           | Add single lead          |
-| POST   | `/campaigns/{id}/leads/import`    | Import leads from CSV    |
-| GET    | `/leads/{id}`                     | Get lead details         |
-| DELETE | `/leads/{id}`                     | Delete lead              |
-| PATCH  | `/leads/{id}/replied`             | Mark lead as replied     |
-| GET    | `/leads/{id}/emails`              | Get lead email activity  |
-| GET    | `/health`                         | Health check             |
+| Method | Endpoint                         | Description             |
+| ------ | -------------------------------- | ----------------------- |
+| GET    | `/campaigns`                   | List all campaigns      |
+| POST   | `/campaigns`                   | Create campaign         |
+| GET    | `/campaigns/{id}`              | Get campaign details    |
+| DELETE | `/campaigns/{id}`              | Delete campaign         |
+| PATCH  | `/campaigns/{id}/status`       | Start/stop campaign     |
+| GET    | `/campaigns/{id}/leads`        | List campaign leads     |
+| POST   | `/campaigns/{id}/leads`        | Add single lead         |
+| POST   | `/campaigns/{id}/leads/import` | Import leads from CSV   |
+| GET    | `/leads/{id}`                  | Get lead details        |
+| DELETE | `/leads/{id}`                  | Delete lead             |
+| PATCH  | `/leads/{id}/replied`          | Mark lead as replied    |
+| GET    | `/leads/{id}/emails`           | Get lead email activity |
+| GET    | `/health`                      | Health check            |
 
 ## Architecture
 

@@ -339,7 +339,7 @@ export default function CreateCampaignModal({
                             value={form.goal}
                             onChange={handleInputChange}
                             className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.goal ? "border-destructive" : ""}`}
-                            placeholder="We help [Target Audience] achieve [Benefit]. The goal of this email is to [Call To Action]..."
+                            placeholder="Example: We help [Marketing Agencies] solve [Lead Quality Issues] by providing [AI Scraping]. The goal is to get them to [Book a 15 min call]."
                         />
                         {fieldErrors.goal && (
                             <p className="text-xs text-destructive">{fieldErrors.goal}</p>
