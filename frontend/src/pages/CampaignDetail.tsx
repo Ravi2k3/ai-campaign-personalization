@@ -8,6 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
     Table,
     TableBody,
     TableCell,
@@ -146,25 +152,37 @@ function CampaignDetailsHeader({
                 ) : (
                     <>
                         {showToggle && (
-                            <Button
-                                variant={canStart ? "default" : canStop ? "outline" : "secondary"}
-                                onClick={onToggleStatus}
-                                disabled={toggling || (!canStart && !canStop)}
-                                title={!canStart && !canStop ? "Add leads to start campaign" : undefined}
-                                className="gap-2"
-                            >
-                                {canStop ? (
-                                    <>
-                                        <Pause size={16} />
-                                        {toggling ? "Pausing..." : "Pause"}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play size={16} />
-                                        {toggling ? "Starting..." : "Start"}
-                                    </>
-                                )}
-                            </Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span tabIndex={!canStart && !canStop ? 0 : undefined}>
+                                            <Button
+                                                variant={canStart ? "default" : canStop ? "outline" : "secondary"}
+                                                onClick={onToggleStatus}
+                                                disabled={toggling || (!canStart && !canStop)}
+                                                className="gap-2"
+                                            >
+                                                {canStop ? (
+                                                    <>
+                                                        <Pause size={16} />
+                                                        {toggling ? "Pausing..." : "Pause"}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Play size={16} />
+                                                        {toggling ? "Starting..." : "Start"}
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </span>
+                                    </TooltipTrigger>
+                                    {!canStart && !canStop && (
+                                        <TooltipContent>
+                                            <p>Add leads to start campaign</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
                         {campaign?.status !== 'completed' && (
                             <>
