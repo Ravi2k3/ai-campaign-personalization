@@ -2,6 +2,10 @@
 
 > Mini-SaaS for automated, AI-powered email outreach with intelligent follow-up sequences
 
+## Overview
+
+![Showcase](assets/show.gif)
+
 ## Features
 
 - **Campaign Management** – Create, start/pause, and delete email outreach campaigns
