@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { get, patch } from "@/lib/api"
+import { formatTime } from "@/lib/utils"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -69,7 +70,9 @@ function getLeadStatusColor(status: string) {
 function formatDate(dateString: string | null) {
     if (!dateString) return "Not scheduled"
     const date = new Date(dateString)
-    return date.toLocaleString()
+    const formatted = formatTime(dateString)
+    const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    return formatted ? `${dateStr}, ${formatted.time} ${formatted.timezone}` : date.toLocaleString()
 }
 
 function LeadInfoCard({

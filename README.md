@@ -8,10 +8,11 @@
 - **AI Personalization** – Generate human-like personalized emails using LLMs (Groq/OpenAI-compatible)
 - **Lead Management** – Import leads via CSV or add manually, view/delete individual leads
 - **Automated Follow-ups** – Configurable follow-up sequences with customizable delays
-- **Smart Scheduling** – Background cron job processes emails every minute
+- **Smart Scheduling** – Background scheduler processes eligible emails every minuteBackground cron job processes emails every minute
+- **Rate Limiting** – Configurable per-campaign rate limiting (50 emails/hour default) to protect sender reputation
 - **Reply Tracking** – Mark leads as replied to stop further outreach
 - **Email Activity Timeline** – View complete email history for each lead
-- **Crash Recovery** – Idempotency keys prevent duplicate emails on server restart
+- **Crash Recovery** – Deterministic idempotency keys prevent duplicate emails even across crashes or restarts
 
 ## Tech Stack
 
@@ -102,7 +103,7 @@ Create a `.env` file in the `backend/` folder:
 RESEND_API_KEY=re_...
 EMAIL_DOMAIN=yourdomain.com  # Must be verified in Resend
 
-# LLM (Groq or OpenAI-compatible)
+# LLM (Any OpenAI-compatible LLM provider)
 LLM_SOURCE=groq
 LLM_API_KEY=gsk_...
 LLM_MODEL=llama-3.3-70b-versatile
@@ -124,6 +125,7 @@ AXIOM_DATASET=everis-logs
 3. **Campaign Started** – Status changes to `active`, pending leads queued for immediate processing
 4. **Cron Job Runs** (every 60 seconds):
    - Fetches eligible leads (active campaign, not replied, due for email)
+   - Enforces rate limit (50 emails/hour per campaign)
    - Locks leads to prevent race conditions
    - Generates personalized emails via LLM (10 concurrent)
    - Batch sends via Resend with idempotency key
@@ -141,21 +143,29 @@ pending → processing → active → completed
 
 ## API Endpoints
 
-| Method | Endpoint                         | Description             |
-| ------ | -------------------------------- | ----------------------- |
-| GET    | `/campaigns`                   | List all campaigns      |
-| POST   | `/campaigns`                   | Create campaign         |
-| GET    | `/campaigns/{id}`              | Get campaign details    |
-| DELETE | `/campaigns/{id}`              | Delete campaign         |
-| PATCH  | `/campaigns/{id}/status`       | Start/stop campaign     |
-| GET    | `/campaigns/{id}/leads`        | List campaign leads     |
-| POST   | `/campaigns/{id}/leads`        | Add single lead         |
-| POST   | `/campaigns/{id}/leads/import` | Import leads from CSV   |
-| GET    | `/leads/{id}`                  | Get lead details        |
-| DELETE | `/leads/{id}`                  | Delete lead             |
-| PATCH  | `/leads/{id}/replied`          | Mark lead as replied    |
-| GET    | `/leads/{id}/emails`           | Get lead email activity |
-| GET    | `/health`                      | Health check            |
+| Method | Endpoint                         | Description                          |
+| ------ | -------------------------------- | ------------------------------------ |
+| GET    | `/campaigns`                   | List all campaigns                   |
+| POST   | `/campaigns`                   | Create campaign                      |
+| GET    | `/campaigns/{id}`              | Get campaign details                 |
+| DELETE | `/campaigns/{id}`              | Delete campaign                      |
+| PATCH  | `/campaigns/{id}/status`       | Start/stop campaign                  |
+| GET    | `/campaigns/{id}/stats`        | Get campaign stats & rate limit info |
+| GET    | `/campaigns/{id}/leads`        | List campaign leads                  |
+| POST   | `/campaigns/{id}/leads`        | Add single lead                      |
+| POST   | `/campaigns/{id}/leads/import` | Import leads from CSV                |
+| GET    | `/leads/{id}`                  | Get lead details                     |
+| DELETE | `/leads/{id}`                  | Delete lead                          |
+| PATCH  | `/leads/{id}/replied`          | Mark lead as replied                 |
+| GET    | `/leads/{id}/emails`           | Get lead email activity              |
+| GET    | `/health`                      | Health check                         |
+
+## Design Notes
+
+- Rate limits are enforced twice (query time + pre-send) to handle overlapping scheduler runs safely
+- Database row locking prevents duplicate processing when scaling workers
+- Email sending is idempotent to survive crashes between send and DB write
+- Client-side CSV validation improves UX and reduces unnecessary backend work
 
 ## Architecture
 

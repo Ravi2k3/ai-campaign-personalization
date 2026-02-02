@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
 import { get, patch } from "@/lib/api"
+import { formatTime } from "@/lib/utils"
 import { toast } from "sonner"
 import ErrorPage from "./ErrorPage"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import {
     Tooltip,
     TooltipContent,
@@ -32,7 +34,9 @@ import {
     Play,
     Pause,
     Trash2,
-    ExternalLink
+    ExternalLink,
+    Mail,
+    Gauge
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
@@ -47,6 +51,16 @@ type Campaign = {
     follow_up_delay_minutes: number
     max_follow_ups: number
     status: string
+}
+
+type CampaignStats = {
+    emails_sent: number
+    emails_target: number
+    emails_in_window: number
+    rate_limit: number
+    rate_limit_window_minutes: number
+    rate_limit_remaining: number
+    rate_limit_resets_at: string | null
 }
 
 type Lead = {
@@ -227,6 +241,114 @@ function getCampaignStatusColor(status: string) {
     }
 }
 
+function CampaignProgressCard({
+    stats,
+    loading,
+    campaignStatus
+}: {
+    stats: CampaignStats | null
+    loading: boolean
+    campaignStatus: string | undefined
+}) {
+    if (loading) {
+        return (
+            <Card className="mb-6">
+                <CardContent className="py-4 px-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[1, 2].map(i => (
+                            <div key={i} className="space-y-2">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-2 w-full" />
+                                <Skeleton className="h-3 w-24" />
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    if (!stats) return null
+
+    const hasLeads = stats.emails_target > 0
+    const campaignProgress = hasLeads 
+        ? Math.min(100, Math.round((stats.emails_sent / stats.emails_target) * 100))
+        : 0
+    const rateLimitProgress = Math.min(100, Math.round((stats.emails_in_window / stats.rate_limit) * 100))
+    const isRateLimited = stats.rate_limit_remaining === 0
+
+    return (
+        <Card className="mb-6">
+            <CardContent className="py-4 px-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Campaign Progress */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Mail size={14} className="text-muted-foreground" />
+                                <span className="text-sm font-medium">Campaign Progress</span>
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                                {hasLeads ? `${stats.emails_sent} / ${stats.emails_target} emails` : "No leads yet"}
+                            </span>
+                        </div>
+                        <Progress value={campaignProgress} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                            {hasLeads ? `${campaignProgress}% complete` : "Add leads to start"}
+                        </p>
+                    </div>
+
+                    {/* Sending Quota */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Gauge size={14} className="text-muted-foreground" />
+                                <span className="text-sm font-medium">Sending Quota</span>
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                                {campaignStatus === "completed" ? "—" : `${stats.emails_in_window} of ${stats.rate_limit} used`}
+                            </span>
+                        </div>
+                        <Progress 
+                            value={campaignStatus === "completed" ? 100 : rateLimitProgress} 
+                            className="h-2"
+                            indicatorClassName={
+                                campaignStatus === "completed" 
+                                    ? undefined 
+                                    : isRateLimited 
+                                        ? "bg-red-500" 
+                                        : rateLimitProgress > 80 
+                                            ? "bg-yellow-500" 
+                                            : undefined
+                            }
+                        />
+                        <p className={`text-xs ${
+                            campaignStatus === "completed" 
+                                ? "text-muted-foreground" 
+                                : isRateLimited 
+                                    ? "text-red-500 font-medium" 
+                                    : "text-muted-foreground"
+                        }`}>
+                            {campaignStatus === "completed" 
+                                ? "Campaign completed ✓"
+                                : isRateLimited 
+                                    ? (() => {
+                                        const resetTime = formatTime(stats.rate_limit_resets_at)
+                                        return resetTime 
+                                            ? <>Paused until {resetTime.time} <span className="text-red-400 font-normal">{resetTime.timezone}</span></>
+                                            : "Paused - resuming soon"
+                                    })()
+                                    : stats.rate_limit_remaining === stats.rate_limit 
+                                        ? "Ready to send"
+                                        : `${stats.rate_limit_remaining} more email${stats.rate_limit_remaining === 1 ? "" : "s"} available`}
+                        </p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 function CampaignInfoCard({
     campaign,
     leadsCount,
@@ -352,6 +474,7 @@ export default function CampaignDetail() {
     const { id } = useParams<{ id: string }>()
     const [campaign, setCampaign] = useState<Campaign | null>(null)
     const [leads, setLeads] = useState<Lead[]>([])
+    const [stats, setStats] = useState<CampaignStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showAddLead, setShowAddLead] = useState(false)
@@ -378,12 +501,14 @@ export default function CampaignDetail() {
     const fetchData = async () => {
         try {
             setLoading(true)
-            const [campaignData, leadsData] = await Promise.all([
+            const [campaignData, leadsData, statsData] = await Promise.all([
                 get<Campaign>(`/campaigns/${id}`),
-                get<Lead[]>(`/campaigns/${id}/leads`)
+                get<Lead[]>(`/campaigns/${id}/leads`),
+                get<CampaignStats>(`/campaigns/${id}/stats`)
             ])
             setCampaign(campaignData)
             setLeads(leadsData)
+            setStats(statsData)
             setError(null)
         } catch (err) {
             // Parse error message properly
@@ -479,6 +604,11 @@ export default function CampaignDetail() {
                 {/* Campaign Info Card */}
                 <div className="flex-shrink-0">
                     <CampaignInfoCard campaign={campaign} leadsCount={leads.length} loading={loading} />
+                </div>
+
+                {/* Campaign Progress Card */}
+                <div className="flex-shrink-0">
+                    <CampaignProgressCard stats={stats} loading={loading} campaignStatus={campaign?.status} />
                 </div>
 
                 {loading ? (

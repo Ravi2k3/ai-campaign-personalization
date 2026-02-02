@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.db import init_db, init_pool, close_pool, test_connection # type: ignore
+from src.db import init_db, test_connection, init_pool, close_pool # type: ignore
 from src.api import campaigns_router, leads_router, leads_detail_router # type: ignore
 from src.scheduler import start_scheduler, stop_scheduler # type: ignore
 
@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     # Shutdown: stop scheduler and close connection pool
     stop_scheduler()
     close_pool()
-
+    
 app = FastAPI(
     title="Everis AI Mail Personalization",
     description="Mini-SaaS for automated personalized email outreach",
@@ -27,6 +27,12 @@ app = FastAPI(
 )
 
 # CORS - allow frontend to connect
+# for local development
+# BASE_URL = "http://localhost"
+# BACKEND_URL = f"{BASE_URL}:8000"
+# FRONTEND_URL = f"{BASE_URL}:5173"
+
+# hosted urls
 BASE_URL = "gautam-everis-demo.com"
 BACKEND_URL = f"https://api.{BASE_URL}"
 FRONTEND_URL = f"https://app.{BASE_URL}"

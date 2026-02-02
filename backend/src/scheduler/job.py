@@ -29,6 +29,10 @@ MAX_LEADS_PER_RUN = 50
 # Max concurrent AI generations
 MAX_CONCURRENT_GENERATIONS = 10
 
+# Rate limit: max emails per campaign per time window
+CAMPAIGN_EMAIL_RATE_LIMIT = 50
+RATE_LIMIT_WINDOW_MINUTES = 60  # 50 emails per hour per campaign
+
 async def run_sync(func, *args, **kwargs):
     # Run a synchronous function in executor to avoid blocking the event loop.
     loop = asyncio.get_running_loop()
@@ -43,43 +47,80 @@ def _get_eligible_leads() -> List[Dict[str, Any]]:
     
     Criteria:
     - Campaign is active
+    - Campaign has not hit rate limit (CAMPAIGN_EMAIL_RATE_LIMIT per RATE_LIMIT_WINDOW_MINUTES)
     - Lead has not replied
     - Lead is not already processing/completed/failed
     - next_email_at is NULL (first email) or <= NOW()
     - current_sequence < max_follow_ups
     - Not locked (or lock is stale)
+    
+    Uses ROW_NUMBER() to limit leads PER CAMPAIGN based on remaining rate limit capacity.
+    
+    NOTE: Rate limits are enforced TWICE for safety:
+    1. HERE (query time) - Reduces unnecessary work by limiting fetched leads
+    2. Before sending (_get_campaign_rate_limits) - Authoritative check to handle race
+       conditions when multiple job runs overlap or DB state changes during processing
     """
     query = """
-        SELECT 
-            l.id as lead_id,
-            l.email,
-            l.first_name,
-            l.last_name,
-            l.company,
-            l.title,
-            l.notes,
-            l.current_sequence,
-            c.id as campaign_id,
-            c.name as campaign_name,
-            c.sender_name,
-            c.sender_email,
-            c.goal,
-            c.follow_up_delay_minutes,
-            c.max_follow_ups
-        FROM leads l
-        JOIN campaigns c ON l.campaign_id = c.id
-        WHERE c.status = 'active'
-          AND l.has_replied = false
-          AND l.status NOT IN ('completed', 'replied', 'processing')
-          AND l.current_sequence < c.max_follow_ups
-          AND (l.next_email_at IS NULL OR l.next_email_at <= NOW())
-          AND (l.locked_at IS NULL OR l.locked_at < NOW() - INTERVAL '%s minutes')
-        ORDER BY l.next_email_at ASC NULLS FIRST
+        WITH campaign_email_counts AS (
+            SELECT 
+                l.campaign_id,
+                COUNT(e.id) as emails_in_window
+            FROM leads l
+            JOIN emails e ON e.lead_id = l.id
+            WHERE e.status = 'sent'
+              AND e.sent_at >= NOW() - INTERVAL '%s minutes'
+            GROUP BY l.campaign_id
+        ),
+        eligible_leads AS (
+            SELECT 
+                l.id as lead_id,
+                l.email,
+                l.first_name,
+                l.last_name,
+                l.company,
+                l.title,
+                l.notes,
+                l.current_sequence,
+                l.next_email_at,
+                c.id as campaign_id,
+                c.name as campaign_name,
+                c.sender_name,
+                c.sender_email,
+                c.goal,
+                c.follow_up_delay_minutes,
+                c.max_follow_ups,
+                COALESCE(cec.emails_in_window, 0) as campaign_emails_in_window,
+                ROW_NUMBER() OVER (
+                    PARTITION BY c.id 
+                    ORDER BY l.next_email_at ASC NULLS FIRST
+                ) as campaign_row_num
+            FROM leads l
+            JOIN campaigns c ON l.campaign_id = c.id
+            LEFT JOIN campaign_email_counts cec ON cec.campaign_id = c.id
+            WHERE c.status = 'active'
+              AND COALESCE(cec.emails_in_window, 0) < %s
+              AND l.has_replied = false
+              AND l.status NOT IN ('completed', 'replied', 'processing')
+              AND l.current_sequence < c.max_follow_ups
+              AND (l.next_email_at IS NULL OR l.next_email_at <= NOW())
+              AND (l.locked_at IS NULL OR l.locked_at < NOW() - INTERVAL '%s minutes')
+        )
+        SELECT *
+        FROM eligible_leads
+        WHERE campaign_row_num <= (%s - campaign_emails_in_window)
+        ORDER BY next_email_at ASC NULLS FIRST
         LIMIT %s
     """
 
     with get_cursor() as cur:
-        cur.execute(query, (LOCK_TIMEOUT_MINUTES, MAX_LEADS_PER_RUN))
+        cur.execute(query, (
+            RATE_LIMIT_WINDOW_MINUTES,
+            CAMPAIGN_EMAIL_RATE_LIMIT,
+            LOCK_TIMEOUT_MINUTES,
+            CAMPAIGN_EMAIL_RATE_LIMIT,
+            MAX_LEADS_PER_RUN
+        ))
         leads = cur.fetchall()
     
     return leads # type: ignore
@@ -107,6 +148,36 @@ def _lock_leads(lead_ids: List[str]) -> List[str]:
     
     return [str(r["id"]) for r in results]
 
+def _get_campaign_rate_limits(campaign_ids: List[str]) -> Dict[str, int]:
+    """
+    Get remaining rate limit capacity for each campaign.
+    This is the authoritative check right before sending.
+    Returns dict of campaign_id -> remaining emails allowed.
+    """
+    if not campaign_ids:
+        return {}
+    
+    query = """
+        SELECT 
+            c.id as campaign_id,
+            %s - COALESCE((
+                SELECT COUNT(*)
+                FROM emails e
+                JOIN leads l ON e.lead_id = l.id
+                WHERE l.campaign_id = c.id
+                  AND e.status = 'sent'
+                  AND e.sent_at >= NOW() - INTERVAL '%s minutes'
+            ), 0) as remaining
+        FROM campaigns c
+        WHERE c.id = ANY(%s::uuid[])
+    """
+    
+    with get_cursor() as cur:
+        cur.execute(query, (CAMPAIGN_EMAIL_RATE_LIMIT, RATE_LIMIT_WINDOW_MINUTES, campaign_ids))
+        results = cur.fetchall()
+    
+    return {str(r["campaign_id"]): max(0, r["remaining"]) for r in results}
+
 def _get_previous_emails_batch(lead_ids: List[str]) -> Dict[str, List[Dict[str, Any]]]:
     # Get previous emails for multiple leads at once.
     if not lead_ids:
@@ -129,7 +200,7 @@ def _get_previous_emails_batch(lead_ids: List[str]) -> Dict[str, List[Dict[str, 
         lid = str(email["lead_id"])
         if lid in result:
             result[lid].append(email)
-    
+
     return result
 
 def _record_emails_batch(email_records: List[Dict[str, Any]]) -> None:
@@ -175,7 +246,7 @@ def _update_leads_after_send(updates: List[Dict[str, Any]]) -> None:
         )
         for u in updates
     ]
-    
+
     with get_cursor(commit=True) as cur:
         execute_batch(cur, query, params)
 
@@ -401,7 +472,53 @@ async def process_leads_job() -> None:
         if not successful_generations:
             return
         
-        # Step 5: Batch send all emails
+        # Step 5: Enforce rate limits (authoritative check before sending)
+        # This is the final gate - even if leads passed earlier checks,
+        # we verify rate limits again right before sending
+        campaign_ids = list(set(gen["lead"]["campaign_id"] for gen in successful_generations))
+        rate_limits = await run_sync(_get_campaign_rate_limits, campaign_ids)
+        
+        # Group by campaign and filter to respect limits
+        campaign_gens: Dict[str, List[Dict[str, Any]]] = {}
+        for gen in successful_generations:
+            cid = gen["lead"]["campaign_id"]
+            if cid not in campaign_gens:
+                campaign_gens[cid] = []
+            campaign_gens[cid].append(gen)
+        
+        filtered_generations: List[Dict[str, Any]] = []
+        skipped_leads: List[Dict[str, Any]] = []
+        
+        for cid, gens in campaign_gens.items():
+            remaining = rate_limits.get(cid, 0)
+            if remaining <= 0:
+                skipped_leads.extend([g["lead"] for g in gens])
+                logger.info(f"[CRON] Campaign {cid} hit rate limit, skipping {len(gens)} emails")
+            elif len(gens) > remaining:
+                filtered_generations.extend(gens[:remaining])
+                skipped_leads.extend([g["lead"] for g in gens[remaining:]])
+                logger.info(f"[CRON] Campaign {cid} partially rate limited: sending {remaining}/{len(gens)}")
+            else:
+                filtered_generations.extend(gens)
+        
+        # Unlock skipped leads so they can be picked up in next run
+        if skipped_leads:
+            skipped_ids = [str(l["lead_id"]) for l in skipped_leads]
+            with get_cursor(commit=True) as cur:
+                cur.execute("""
+                    UPDATE leads 
+                    SET status = 'active', locked_at = NULL, updated_at = NOW()
+                    WHERE id = ANY(%s::uuid[])
+                """, (skipped_ids,))
+            logger.info(f"[CRON] Unlocked {len(skipped_ids)} rate-limited leads for next run")
+        
+        if not filtered_generations:
+            logger.info("[CRON] All leads skipped due to rate limits")
+            return
+        
+        successful_generations = filtered_generations
+        
+        # Step 6: Batch send all emails
         mails_to_send: List[Mail] = []
         for gen in successful_generations:
             lead = gen["lead"]
