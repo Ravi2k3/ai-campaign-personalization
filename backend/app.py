@@ -28,7 +28,8 @@ app = FastAPI(
 
 # CORS - allow frontend to connect
 BASE_URL = "gautam-everis-demo.com"
-BACKEND_URL = f"https://api.{BASE_URL}"
+# BACKEND_URL = f"https://api.{BASE_URL}"
+BACKEND_URL = f"http://everis-ai-mail-personalization:10000"
 FRONTEND_URL = f"https://app.{BASE_URL}"
 
 app.add_middleware(
