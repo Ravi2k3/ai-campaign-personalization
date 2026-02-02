@@ -98,6 +98,7 @@ function LeadsTableSkeleton() {
 function CampaignDetailsHeader({
     loading,
     campaign,
+    leadsCount,
     setShowAddLead,
     setShowImportCSV,
     onToggleStatus,
@@ -106,15 +107,16 @@ function CampaignDetailsHeader({
 }: {
     loading: boolean
     campaign: Campaign | null
+    leadsCount: number
     setShowAddLead: (show: boolean) => void
     setShowImportCSV: (show: boolean) => void
     onToggleStatus: () => void
     toggling: boolean
     onDelete: () => void
 }) {
-    const canStart = campaign?.status === "draft" || campaign?.status === "paused"
+    const canStart = (campaign?.status === "draft" || campaign?.status === "paused") && leadsCount > 0
     const canStop = campaign?.status === "active"
-    const showToggle = canStart || canStop
+    const showToggle = (campaign?.status === "draft" || campaign?.status === "paused" || campaign?.status === "active")
 
     return (
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
@@ -145,20 +147,21 @@ function CampaignDetailsHeader({
                     <>
                         {showToggle && (
                             <Button
-                                variant={canStart ? "default" : "outline"}
+                                variant={canStart ? "default" : canStop ? "outline" : "secondary"}
                                 onClick={onToggleStatus}
-                                disabled={toggling}
+                                disabled={toggling || (!canStart && !canStop)}
+                                title={!canStart && !canStop ? "Add leads to start campaign" : undefined}
                                 className="gap-2"
                             >
-                                {canStart ? (
-                                    <>
-                                        <Play size={16} />
-                                        {toggling ? "Starting..." : "Start"}
-                                    </>
-                                ) : (
+                                {canStop ? (
                                     <>
                                         <Pause size={16} />
                                         {toggling ? "Pausing..." : "Pause"}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play size={16} />
+                                        {toggling ? "Starting..." : "Start"}
                                     </>
                                 )}
                             </Button>
@@ -446,6 +449,7 @@ export default function CampaignDetail() {
                     <CampaignDetailsHeader
                         loading={loading}
                         campaign={campaign}
+                        leadsCount={leads.length}
                         setShowAddLead={setShowAddLead}
                         setShowImportCSV={setShowImportCSV}
                         onToggleStatus={handleToggleStatus}

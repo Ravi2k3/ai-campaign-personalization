@@ -18,7 +18,7 @@ if not DATABASE_URI:
 pg_pool: pool.ThreadedConnectionPool | None = None
 
 def init_pool() -> None:
-    """Initialize the thread-safe connection pool. Call once at app startup."""
+    # Initialize the thread-safe connection pool. Call once at app startup.
     global pg_pool
     
     if pg_pool is not None:
@@ -34,7 +34,7 @@ def init_pool() -> None:
         raise
 
 def close_pool() -> None:
-    """Close all connections in the pool. Call at app shutdown."""
+    # Close all connections in the pool. Call at app shutdown.
     global pg_pool
     
     if pg_pool is None:

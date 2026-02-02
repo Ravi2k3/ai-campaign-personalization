@@ -91,6 +91,13 @@ async def update_campaign_status(campaign_id: str, action: str):
         if action == "start":
             if current_status not in ["draft", "paused"]:
                 raise HTTPException(status_code=400, detail="Can only start campaigns in draft or paused status")
+            
+            # Check if campaign has any leads
+            cur.execute("SELECT COUNT(*) as count FROM leads WHERE campaign_id = %s", (campaign_id,))
+            lead_count = cur.fetchone()["count"]
+            if lead_count == 0:
+                raise HTTPException(status_code=400, detail="Cannot start a campaign with no leads. Add leads first.")
+            
             new_status = "active"
             
             # Queue pending leads for immediate processing by setting next_email_at = NOW()
