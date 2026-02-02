@@ -11,9 +11,9 @@ from ..logger import logger
 load_dotenv()
 
 # AI Provider Configuration
-SOURCE = 'groq'
-API = os.getenv("GROQ_API_KEY")
-MODEL = "qwen/qwen3-32b"
+SOURCE = os.getenv("LLM_SOURCE")
+API = os.getenv("LLM_API_KEY")
+MODEL = os.getenv("LLM_MODEL")
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -27,8 +27,8 @@ if len(RETRY_DELAYS) != MAX_RETRIES:
 
 # Initialize Provider
 PROVIDER = Provider(
-    source=SOURCE,
-    api=API # type: ignore
+    source=SOURCE, # type: ignore
+    api=API        # type: ignore
 )
 
 # Role & Prompt for the AI
@@ -50,6 +50,7 @@ You are an expert email copywriter specializing in personalized B2B outreach cam
 - End with a clear, low-pressure call-to-action
 - Use emojis sparingly (0-2 per email), only if appropriate for the tone of the campaign.
 - Only use common emojis that render correctly everywhere (😊 👋 ✨ 🎉 ❤️)
+- Make sure to create appropriate follow-up mails (changed from the previously sent mails) 
 
 ## Do Nots
 - Do NOT include any URLs or links (not even placeholders like [link] or example.com)
@@ -79,7 +80,7 @@ Generate a personalized email for the following campaign:
 ## CAMPAIGN DETAILS
 {campaign_info}
 
-## EMAIL SEQUENCE CONTEXT
+## EMAIL SEQUENCE CONTEXT (PREVIOUS MAILS)
 {previous_emails}
 
 ---
@@ -116,10 +117,10 @@ async def generate_mail(
 
     email_agent = Agent(
         provider=PROVIDER,
-        model=MODEL,
+        model=MODEL, # type: ignore
         output_schema=PersonalizedMessage,
         system_role=ROLE,
-        persistence=False # We do not need to store entire agents history
+        persistence=False
     )
     
     email_agent_prompt = Content(PROMPT.format(
@@ -147,5 +148,4 @@ async def generate_mail(
     logger.error(f"Email generation failed after {MAX_RETRIES} attempts: {str(last_exception)}")
 
     if last_exception:
-        # pls catch this during runtime
         raise last_exception

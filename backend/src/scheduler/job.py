@@ -312,7 +312,8 @@ async def generate_email_for_lead(
             "max_follow_ups": lead["max_follow_ups"]
         }
         
-        # This is already async (limit to last 5 emails to avoid token limits)
+        # Limit context window to last 5 emails
+        # To prevent context limit issues on some LLMs
         recent_emails = previous_emails[-5:] if len(previous_emails) > 5 else previous_emails
         personalized = await generate_mail(user_info, campaign_info, recent_emails)
         

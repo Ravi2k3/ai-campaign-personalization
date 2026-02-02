@@ -129,12 +129,14 @@ function LeadInfoCard({
                                 <p className="text-xs text-muted-foreground mb-1">Replied</p>
                                 <span className="font-medium">{lead.has_replied ? "Yes" : "No"}</span>
                             </div>
-                            {lead.next_email_at && (
-                                <div>
-                                    <p className="text-xs text-muted-foreground mb-1">Next Email</p>
-                                    <span className="text-sm">{formatDate(lead.next_email_at)}</span>
-                                </div>
-                            )}
+                            <div>
+                                <p className="text-xs text-muted-foreground mb-1">Next Email</p>
+                                <span className="text-sm">
+                                    {lead.status === "completed" || lead.status === "replied" || lead.status === "failed"
+                                        ? "-"
+                                        : formatDate(lead.next_email_at)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 ) : null}
