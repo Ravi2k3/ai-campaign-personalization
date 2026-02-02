@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.db import init_db, test_connection, init_pool, close_pool # type: ignore
-from src.api import campaigns_router, leads_router, leads_detail_router # type: ignore
+from src.api import campaigns_router, leads_router, leads_detail_router, webhooks_router # type: ignore
 from src.scheduler import start_scheduler, stop_scheduler # type: ignore
 
 @asynccontextmanager
@@ -27,7 +27,8 @@ app = FastAPI(
 )
 
 # CORS - allow frontend to connect
-# for local development
+
+# # for local development
 # BASE_URL = "http://localhost"
 # BACKEND_URL = f"{BASE_URL}:8000"
 # FRONTEND_URL = f"{BASE_URL}:5173"
@@ -49,6 +50,7 @@ app.add_middleware(
 app.include_router(campaigns_router)
 app.include_router(leads_router)
 app.include_router(leads_detail_router)
+app.include_router(webhooks_router)
 
 @app.get("/health")
 async def health_check():

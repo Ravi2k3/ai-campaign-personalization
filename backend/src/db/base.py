@@ -22,6 +22,7 @@ class Status:
     class EmailStatus(str, Enum):
         SENT = "sent"
         FAILED = "failed"
+        RECEIVED = "received"
 
 # Table Schemas
 CAMPAIGNS_TABLE = """

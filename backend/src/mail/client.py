@@ -1,6 +1,6 @@
 import os, re, time, resend
 
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 
 from .base import Mail
@@ -31,6 +31,22 @@ def sanitize(name: str) -> str:
     # Keep only a-z, 0-9, and hyphens. Remove everything else.
     return re.sub(r'[^a-z0-9-]', '', name.lower().replace(" ", "-"))
 
+def _build_reply_to(mail: Mail) -> List[str]:
+    """
+    Build reply_to list with sender email + tracking email (if configured).
+    Tracking format: {lead_id}@{EMAIL_DOMAIN}
+    """
+    reply_to = [mail.sender.email]
+    
+    # Only add tracking email if lead_id is given
+    if mail.lead_id:
+        # Only use lead_id to stay under the 64-char RFC 5321 limit.
+        # The database can look up the campaign_id from the lead_id later.
+        tracking_email = f"{mail.lead_id}@{EMAIL_DOMAIN}"
+        reply_to.append(tracking_email)
+    
+    return reply_to
+
 def send_mail(mail: Mail):
     """
     Send a single email to the user with retry logic.
@@ -49,7 +65,7 @@ def send_mail(mail: Mail):
         "to": [mail.to],
         "subject": mail.subject,
         "html": mail.body,
-        "reply_to": mail.sender.email
+        "reply_to": _build_reply_to(mail)
     }
 
     last_exception = None
@@ -71,7 +87,10 @@ def send_mail(mail: Mail):
 
     raise last_exception  # type: ignore
 
-def send_mail_batch(mails: List[Mail], idempotency_key: str | None = None):
+def send_mail_batch(
+    mails: List[Mail], 
+    idempotency_key: Optional[str] = None
+):
     """
     Send a batch of emails to the users with retry logic.
 
@@ -94,7 +113,7 @@ def send_mail_batch(mails: List[Mail], idempotency_key: str | None = None):
             "to": [mail.to],
             "subject": mail.subject,
             "html": mail.body,
-            "reply_to": mail.sender.email
+            "reply_to": _build_reply_to(mail)
         }
         params.append(param)
     

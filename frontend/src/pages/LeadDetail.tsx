@@ -16,7 +16,8 @@ import {
     Clock,
     Send,
     AlertCircle,
-    Trash2
+    Trash2,
+    Reply
 } from "lucide-react"
 import DeleteLeadModal from "@/components/DeleteLeadModal"
 
@@ -53,6 +54,7 @@ function getStatusColor(status: string) {
         case "sent": return "bg-green-100 text-green-700"
         case "pending": return "bg-yellow-100 text-yellow-700"
         case "failed": return "bg-red-100 text-red-700"
+        case "received": return "bg-blue-100 text-blue-700"
         default: return "bg-muted text-muted-foreground"
     }
 }
@@ -174,6 +176,7 @@ function ActivityTimeline({
             case "sent": return "bg-green-500"
             case "pending": return "bg-yellow-500"
             case "failed": return "bg-red-500"
+            case "received": return "bg-blue-500"
             default: return "bg-muted-foreground"
         }
     }
@@ -222,11 +225,15 @@ function ActivityTimeline({
                                                         <Send size={14} className="text-green-600" />
                                                     ) : email.status === "pending" ? (
                                                         <Clock size={14} className="text-yellow-600" />
+                                                    ) : email.status === "received" ? (
+                                                        <Reply size={14} className="text-blue-600" />
                                                     ) : (
                                                         <AlertCircle size={14} className="text-red-600" />
                                                     )}
                                                     <span className="font-medium text-sm">
-                                                        Email #{email.sequence_number}
+                                                        {email.status === "received" || email.sequence_number <= 0
+                                                            ? "Reply Received"
+                                                            : `Email #${email.sequence_number}`}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
                                                         {email.sent_at ? formatDate(email.sent_at) : formatDate(email.created_at)}
@@ -258,7 +265,11 @@ function ActivityTimeline({
                                                     <p className="text-xs text-muted-foreground mb-1">Body:</p>
                                                     <div
                                                         className="text-sm [&>p]:mb-3 [&>p:last-child]:mb-0"
-                                                        dangerouslySetInnerHTML={{ __html: email.body }}
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: email.status === "failed"
+                                                                ? "We couldn't send this email. Please check if the email address is valid."
+                                                                : email.body
+                                                        }}
                                                     />
                                                 </div>
                                             )}

@@ -14,7 +14,7 @@
 - **Automated Follow-ups** – Configurable follow-up sequences with customizable delays
 - **Smart Scheduling** – Background scheduler processes eligible emails every minuteBackground cron job processes emails every minute
 - **Rate Limiting** – Configurable per-campaign rate limiting (50 emails/hour default) to protect sender reputation
-- **Reply Tracking** – Mark leads as replied to stop further outreach
+- **Reply Tracking** – Mark leads as replied manually or automatically via webhook to stop further outreach
 - **Email Activity Timeline** – View complete email history for each lead
 - **Crash Recovery** – Deterministic idempotency keys prevent duplicate emails even across crashes or restarts
 
@@ -67,7 +67,8 @@ npm run dev
 │       ├── api/                # REST endpoints
 │       │   ├── campaigns.py    # Campaign CRUD + start/stop
 │       │   ├── leads.py        # Leads CRUD + CSV import
-│       │   └── models.py       # Pydantic schemas
+│       │   ├── models.py       # Pydantic schemas
+│       │   └── webhooks.py     # Resend webhooks
 │       ├── db/                 # Database layer
 │       │   ├── base.py         # Schema definitions
 │       │   ├── engine.py       # Connection pooling
@@ -105,7 +106,9 @@ Create a `.env` file in the `backend/` folder:
 ```env
 # Email (Resend)
 RESEND_API_KEY=re_...
-EMAIL_DOMAIN=yourdomain.com  # Must be verified in Resend
+RESEND_WEBHOOK_SECRET=whsec_... # From Resend Webhooks dashboard
+
+EMAIL_DOMAIN=yourdomain.com     # Must be verified in Resend
 
 # LLM (Any OpenAI-compatible LLM provider)
 LLM_SOURCE=groq
@@ -119,6 +122,21 @@ DATABASE_URI=postgresql://user:pass@host:5432/dbname
 AXIOM_TOKEN=xaat-...
 AXIOM_DATASET=everis-logs
 ```
+
+## Webhook Setup (For Reply Tracking)
+
+To enable automatic reply tracking:
+
+1.  **Add Domain in Resend**: 
+    *   Add the domain/subdomain in Resend dashboard. 
+    *   Enable Recieving & Sending in resend for your domain.
+2.  **Add Webhook Endpoint**:
+    *   Go to **Webhooks** in Resend.
+    *   Click **Add Endpoint**.
+    *   **Target URL**: `https://your-api-url.com/webhooks/resend/inbound`
+    *   **Events**: Select `email.received`.
+3.  **Update Environment**:
+    *   Copy the **Signing Secret** to `RESEND_WEBHOOK_SECRET`.
 
 ## How It Works
 
@@ -134,7 +152,7 @@ AXIOM_DATASET=everis-logs
    - Generates personalized emails via LLM (10 concurrent)
    - Batch sends via Resend with idempotency key
    - Records emails and schedules next follow-up
-5. **Lead Replies** – User marks lead as replied, stopping further emails
+5. **Lead Replies** – User marks lead as replied OR webhook detects reply, stopping further emails
 6. **Campaign Completes** – Auto-completes when all leads reach terminal state
 
 ### Lead Status Flow
@@ -162,6 +180,7 @@ pending → processing → active → completed
 | DELETE | `/leads/{id}`                  | Delete lead                          |
 | PATCH  | `/leads/{id}/replied`          | Mark lead as replied                 |
 | GET    | `/leads/{id}/emails`           | Get lead email activity              |
+| POST   | `/webhooks/resend/inbound`     | Handle inbound emails (Resend)       |
 | GET    | `/health`                      | Health check                         |
 
 ## Design Notes

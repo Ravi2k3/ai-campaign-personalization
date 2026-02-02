@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class PersonalizedMessage(BaseModel):
     subject: str
@@ -13,3 +14,4 @@ class Mail(BaseModel):
     to: str
     subject: str
     body: str
+    lead_id: Optional[str] = None

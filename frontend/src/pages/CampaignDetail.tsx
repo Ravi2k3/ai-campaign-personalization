@@ -271,7 +271,7 @@ function CampaignProgressCard({
     if (!stats) return null
 
     const hasLeads = stats.emails_target > 0
-    const campaignProgress = hasLeads 
+    const campaignProgress = hasLeads
         ? Math.min(100, Math.round((stats.emails_sent / stats.emails_target) * 100))
         : 0
     const rateLimitProgress = Math.min(100, Math.round((stats.emails_in_window / stats.rate_limit) * 100))
@@ -309,36 +309,35 @@ function CampaignProgressCard({
                                 {campaignStatus === "completed" ? "—" : `${stats.emails_in_window} of ${stats.rate_limit} used`}
                             </span>
                         </div>
-                        <Progress 
-                            value={campaignStatus === "completed" ? 100 : rateLimitProgress} 
+                        <Progress
+                            value={campaignStatus === "completed" ? 100 : rateLimitProgress}
                             className="h-2"
                             indicatorClassName={
-                                campaignStatus === "completed" 
-                                    ? undefined 
-                                    : isRateLimited 
-                                        ? "bg-red-500" 
-                                        : rateLimitProgress > 80 
-                                            ? "bg-yellow-500" 
+                                campaignStatus === "completed"
+                                    ? undefined
+                                    : isRateLimited
+                                        ? "bg-red-500"
+                                        : rateLimitProgress > 80
+                                            ? "bg-yellow-500"
                                             : undefined
                             }
                         />
-                        <p className={`text-xs ${
-                            campaignStatus === "completed" 
-                                ? "text-muted-foreground" 
-                                : isRateLimited 
-                                    ? "text-red-500 font-medium" 
-                                    : "text-muted-foreground"
-                        }`}>
-                            {campaignStatus === "completed" 
+                        <p className={`text-xs ${campaignStatus === "completed"
+                            ? "text-muted-foreground"
+                            : isRateLimited
+                                ? "text-red-500 font-medium"
+                                : "text-muted-foreground"
+                            }`}>
+                            {campaignStatus === "completed"
                                 ? "Campaign completed ✓"
-                                : isRateLimited 
+                                : isRateLimited
                                     ? (() => {
                                         const resetTime = formatTime(stats.rate_limit_resets_at)
-                                        return resetTime 
+                                        return resetTime
                                             ? <>Paused until {resetTime.time} <span className="text-red-400 font-normal">{resetTime.timezone}</span></>
                                             : "Paused - resuming soon"
                                     })()
-                                    : stats.rate_limit_remaining === stats.rate_limit 
+                                    : stats.rate_limit_remaining === stats.rate_limit
                                         ? "Ready to send"
                                         : `${stats.rate_limit_remaining} more email${stats.rate_limit_remaining === 1 ? "" : "s"} available`}
                         </p>

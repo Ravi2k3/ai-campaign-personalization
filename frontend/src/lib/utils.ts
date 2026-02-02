@@ -12,16 +12,16 @@ export function getTimezoneAbbr(): string {
   const date = new Date()
   const parts = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(date)
   const tzPart = parts.find(p => p.type === "timeZoneName")?.value || ""
-  
+
   // If already an abbreviation, use it
   if (/^[A-Z]{2,5}$/.test(tzPart)) {
     return tzPart
   }
-  
+
   // Try to get abbreviation from long name
   const longParts = new Intl.DateTimeFormat("en-US", { timeZoneName: "long" }).formatToParts(date)
   const longTz = longParts.find(p => p.type === "timeZoneName")?.value || ""
-  
+
   const tzMappings: Record<string, string> = {
     // Americas
     "Pacific Standard Time": "PST",
@@ -45,7 +45,7 @@ export function getTimezoneAbbr(): string {
     "Colombia Standard Time": "COT",
     "Peru Standard Time": "PET",
     "Venezuela Time": "VET",
-    
+
     // Europe
     "Greenwich Mean Time": "GMT",
     "Coordinated Universal Time": "UTC",
@@ -58,7 +58,7 @@ export function getTimezoneAbbr(): string {
     "Eastern European Summer Time": "EEST",
     "Moscow Standard Time": "MSK",
     "Turkey Time": "TRT",
-    
+
     // Asia
     "India Standard Time": "IST",
     "Indian Standard Time": "IST",
@@ -84,7 +84,7 @@ export function getTimezoneAbbr(): string {
     "Arabian Standard Time": "AST",
     "Israel Standard Time": "IST",
     "Israel Daylight Time": "IDT",
-    
+
     // Australia & Pacific
     "Australian Western Standard Time": "AWST",
     "Australian Central Standard Time": "ACST",
@@ -95,14 +95,14 @@ export function getTimezoneAbbr(): string {
     "New Zealand Daylight Time": "NZDT",
     "Fiji Standard Time": "FJT",
     "Papua New Guinea Time": "PGT",
-    
+
     // Africa
     "West Africa Time": "WAT",
     "Central Africa Time": "CAT",
     "East Africa Time": "EAT",
     "South Africa Standard Time": "SAST",
   }
-  
+
   return tzMappings[longTz] || tzPart
 }
 

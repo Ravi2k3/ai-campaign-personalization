@@ -6,3 +6,4 @@ pydantic==2.12.5
 axiom-py==0.9.1
 resend==2.21.0
 apscheduler==3.11.0
+svix==1.84.1

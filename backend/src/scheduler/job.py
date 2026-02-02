@@ -1,7 +1,7 @@
 import asyncio, functools, hashlib
 
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 from psycopg2.extras import execute_batch, execute_values
 
@@ -148,6 +148,26 @@ def _lock_leads(lead_ids: List[str]) -> List[str]:
     
     return [str(r["id"]) for r in results]
 
+def _check_replied_leads(lead_ids: List[str]) -> set[str]:
+    """
+    Check which leads have replied (final check before sending).
+    This is a safety check in case a reply came in during processing.
+    Returns set of lead IDs that have replied.
+    """
+    if not lead_ids:
+        return set()
+    
+    query = """
+        SELECT id FROM leads 
+        WHERE id = ANY(%s::uuid[]) AND has_replied = true
+    """
+    
+    with get_cursor() as cur:
+        cur.execute(query, (lead_ids,))
+        results = cur.fetchall()
+    
+    return {str(r["id"]) for r in results}
+
 def _get_campaign_rate_limits(campaign_ids: List[str]) -> Dict[str, int]:
     """
     Get remaining rate limit capacity for each campaign.
@@ -178,7 +198,9 @@ def _get_campaign_rate_limits(campaign_ids: List[str]) -> Dict[str, int]:
     
     return {str(r["campaign_id"]): max(0, r["remaining"]) for r in results}
 
-def _get_previous_emails_batch(lead_ids: List[str]) -> Dict[str, List[Dict[str, Any]]]:
+def _get_previous_emails_batch(
+    lead_ids: List[str]
+) -> Dict[str, List[Dict[str, Any]]]:
     # Get previous emails for multiple leads at once.
     if not lead_ids:
         return {}
@@ -203,7 +225,7 @@ def _get_previous_emails_batch(lead_ids: List[str]) -> Dict[str, List[Dict[str, 
 
     return result
 
-def _record_emails_batch(email_records: List[Dict[str, Any]]) -> None:
+def _record_emails_batch(email_records: List[Dict[str, Any]]):
     # Record multiple emails in the database using batch insert.
     if not email_records:
         return
@@ -221,7 +243,7 @@ def _record_emails_batch(email_records: List[Dict[str, Any]]) -> None:
     with get_cursor(commit=True) as cur:
         execute_values(cur, query, values)
 
-def _update_leads_after_send(updates: List[Dict[str, Any]]) -> None:
+def _update_leads_after_send(updates: List[Dict[str, Any]]):
     # Update multiple leads after successful email send using batch execution.
     if not updates:
         return
@@ -253,7 +275,7 @@ def _update_leads_after_send(updates: List[Dict[str, Any]]) -> None:
 def _handle_generation_failures(
     failed_leads: List[Dict[str, Any]], 
     error: str
-) -> None:
+):
     """
     Handle leads that failed email generation.
     - Increment current_sequence (counts as an attempt)
@@ -328,7 +350,7 @@ def _handle_generation_failures(
             execute_batch(cur, query, lead_updates_retry)
             logger.warning(f"Leads scheduled for retry after generation failure: {[u[2] for u in lead_updates_retry]}")
 
-def _check_campaign_completion(campaign_ids: List[str]) -> None:
+def _check_campaign_completion(campaign_ids: List[str]):
     """
     Check if any campaigns should be marked as completed.
     A campaign is complete when ALL its leads are in terminal states (completed, replied, or failed).
@@ -354,10 +376,29 @@ def _check_campaign_completion(campaign_ids: List[str]) -> None:
     with get_cursor(commit=True) as cur:
         cur.execute(query, (unique_campaign_ids,))
 
+def _check_all_active_campaigns_completion():
+    """
+    Check ALL active campaigns for completion.
+    This serves as a safety net for campaigns that might have been missed by incremental checks,
+    or where all leads were already in a terminal state (e.g. all replied externally).
+    """
+    query = """
+        UPDATE campaigns c
+        SET status = 'completed', updated_at = NOW()
+        WHERE c.status = 'active'
+          AND NOT EXISTS (
+              SELECT 1 FROM leads l 
+              WHERE l.campaign_id = c.id 
+                AND l.status NOT IN ('completed', 'replied', 'failed')
+          )
+    """
+    with get_cursor(commit=True) as cur:
+        cur.execute(query)
+
 async def generate_email_for_lead(
     lead: Dict[str, Any], 
     previous_emails: List[Dict[str, Any]]
-) -> Tuple[Dict[str, Any], Dict[str, Any] | None, Exception | None]:
+) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], Optional[Exception]]:
     """
     Generate personalized email for a single lead.
     Returns (lead, generated_email_data, error)
@@ -402,7 +443,7 @@ async def generate_email_for_lead(
         logger.error(f"Failed to generate email for lead {lead_id}: {str(e)}")
         return (lead, None, e)
 
-async def process_leads_job() -> None:
+async def process_leads_job():
     """
     Main job: fetch eligible leads and process them.
     
@@ -463,7 +504,7 @@ async def process_leads_job() -> None:
                 failed_leads.append(lead)
             else:
                 successful_generations.append(email_data)
-        
+
         # Handle generation failures (with retry logic)
         if failed_leads:
             logger.warning(f"[CRON] {len(failed_leads)} leads failed generation")
@@ -493,11 +534,9 @@ async def process_leads_job() -> None:
             remaining = rate_limits.get(cid, 0)
             if remaining <= 0:
                 skipped_leads.extend([g["lead"] for g in gens])
-                logger.info(f"[CRON] Campaign {cid} hit rate limit, skipping {len(gens)} emails")
             elif len(gens) > remaining:
                 filtered_generations.extend(gens[:remaining])
                 skipped_leads.extend([g["lead"] for g in gens[remaining:]])
-                logger.info(f"[CRON] Campaign {cid} partially rate limited: sending {remaining}/{len(gens)}")
             else:
                 filtered_generations.extend(gens)
         
@@ -510,13 +549,33 @@ async def process_leads_job() -> None:
                     SET status = 'active', locked_at = NULL, updated_at = NOW()
                     WHERE id = ANY(%s::uuid[])
                 """, (skipped_ids,))
-            logger.info(f"[CRON] Unlocked {len(skipped_ids)} rate-limited leads for next run")
         
         if not filtered_generations:
-            logger.info("[CRON] All leads skipped due to rate limits")
             return
         
         successful_generations = filtered_generations
+        
+        # Step 5b: Final check for replied leads (safety check)
+        # A lead might have replied during processing - don't send to them
+        gen_lead_ids = [str(gen["lead"]["lead_id"]) for gen in successful_generations]
+        replied_lead_ids = await run_sync(_check_replied_leads, gen_lead_ids)
+        
+        if replied_lead_ids:
+            # Filter out replied leads and mark them as replied
+            successful_generations = [
+                gen for gen in successful_generations 
+                if str(gen["lead"]["lead_id"]) not in replied_lead_ids
+            ]
+            # Update their status
+            with get_cursor(commit=True) as cur:
+                cur.execute("""
+                    UPDATE leads 
+                    SET status = 'replied', locked_at = NULL, updated_at = NOW()
+                    WHERE id = ANY(%s::uuid[])
+                """, (list(replied_lead_ids),))
+        
+        if not successful_generations:
+            return
         
         # Step 6: Batch send all emails
         mails_to_send: List[Mail] = []
@@ -526,7 +585,8 @@ async def process_leads_job() -> None:
                 sender=Sender(name=lead["sender_name"], email=lead["sender_email"]),
                 to=lead["email"],
                 subject=gen["subject"],
-                body=gen["body"]
+                body=gen["body"],
+                lead_id=str(lead["lead_id"])
             )
             mails_to_send.append(mail)
         
@@ -588,11 +648,17 @@ async def process_leads_job() -> None:
             logger.error(f"[CRON] Batch send failed: {str(e)}")
             failed_leads_from_send = [gen["lead"] for gen in successful_generations]
             await run_sync(_handle_generation_failures, failed_leads_from_send, f"Batch send failed: {str(e)}")
-
+            
     except Exception as e:
         logger.error(f"[CRON] Email processing job failed with exception: {str(e)}")
+        
+    finally:
+        # Finally: Global safety check for all active campaigns
+        # Check this so we catch campaigns where all leads are already finished
+        # even if there are no eligible leads to process in this run.
+        await run_sync(_check_all_active_campaigns_completion)
 
-def start_scheduler() -> None:
+def start_scheduler():
     # Start the background scheduler.
     global scheduler
     
@@ -615,7 +681,7 @@ def start_scheduler() -> None:
     scheduler.start()
     logger.info(f"Scheduler started - running every {JOB_INTERVAL_SECONDS} seconds (first run immediate)")
 
-def stop_scheduler() -> None:
+def stop_scheduler():
     # Stop the background scheduler.
     global scheduler
     

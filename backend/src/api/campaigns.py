@@ -158,7 +158,7 @@ async def get_campaign_stats(campaign_id: str):
             SELECT COUNT(*) as count 
             FROM emails e
             JOIN leads l ON e.lead_id = l.id
-            WHERE l.campaign_id = %s AND e.status = 'sent'
+            WHERE l.campaign_id = %s AND e.status IN ('sent', 'failed')
         """, (campaign_id,))
         emails_sent = cur.fetchone()["count"]
         
