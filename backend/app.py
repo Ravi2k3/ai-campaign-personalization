@@ -29,14 +29,14 @@ app = FastAPI(
 # CORS - allow frontend to connect
 
 # for local development
-BASE_URL = "http://localhost"
-BACKEND_URL = f"{BASE_URL}:8000"
-FRONTEND_URL = f"{BASE_URL}:5173"
+# BASE_URL = "http://localhost"
+# BACKEND_URL = f"{BASE_URL}:8000"
+# FRONTEND_URL = f"{BASE_URL}:5173"
 
 # hosted urls
-# BASE_URL = "gautam-everis-demo.com"
-# BACKEND_URL = f"https://api.{BASE_URL}"
-# FRONTEND_URL = f"https://app.{BASE_URL}"
+BASE_URL = "gautam-everis-demo.com"
+BACKEND_URL = f"https://api.{BASE_URL}"
+FRONTEND_URL = f"https://app.{BASE_URL}"
 
 app.add_middleware(
     CORSMiddleware,
