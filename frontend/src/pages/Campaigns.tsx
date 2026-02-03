@@ -3,12 +3,12 @@ import { Link } from "react-router-dom"
 import { get } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { 
+import {
     Card,
-    CardContent, 
-    CardDescription, 
-    CardHeader, 
-    CardTitle 
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, Mail, Users } from "lucide-react"
@@ -45,12 +45,12 @@ function CampaignHeader({
 }) {
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                 <div>
                     <h1 className="text-3xl font-bold">Campaigns</h1>
                     <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
                 </div>
-                <Button onClick={() => setShowModal(true)} className="gap-2">
+                <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto">
                     <Plus size={18} />
                     Create Campaign
                 </Button>
@@ -84,9 +84,16 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail size={14} />
-                        <span>{campaign.sender_name} &lt;{campaign.sender_email}&gt;</span>
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground min-w-0">
+                        <Mail size={14} className="mt-1 flex-shrink-0" />
+                        <div className="flex flex-col sm:flex-row sm:gap-1 min-w-0 flex-1">
+                            <span className="truncate" title={campaign.sender_name}>{campaign.sender_name}</span>
+                            <div className="flex min-w-0 text-muted-foreground/80" title={`<${campaign.sender_email}>`}>
+                                <span>&lt;</span>
+                                <span className="truncate">{campaign.sender_email}</span>
+                                <span>&gt;</span>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Users size={14} />

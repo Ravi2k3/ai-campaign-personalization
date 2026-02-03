@@ -100,26 +100,26 @@ function LeadInfoCard({
                     <div className="space-y-4">
                         <div>
                             <h2 className="text-2xl font-bold">{lead.first_name} {lead.last_name}</h2>
-                            <div className="flex items-center gap-2 mt-2">
-                                <Mail size={16} className="text-muted-foreground" />
-                                <a href={`mailto:${lead.email}`} className="text-primary hover:underline">
+                            <div className="flex items-center gap-2 mt-2 min-w-0">
+                                <Mail size={16} className="text-muted-foreground flex-shrink-0" />
+                                <a href={`mailto:${lead.email}`} className="text-primary hover:underline truncate" title={lead.email}>
                                     {lead.email}
                                 </a>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="flex items-center gap-2">
-                                <Building2 size={16} className="text-muted-foreground" />
-                                <span>{lead.company || "-"}</span>
+                                <Building2 size={16} className="text-muted-foreground flex-shrink-0" />
+                                <span className="break-words">{lead.company || "-"}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Briefcase size={16} className="text-muted-foreground" />
-                                <span>{lead.title || "-"}</span>
+                                <Briefcase size={16} className="text-muted-foreground flex-shrink-0" />
+                                <span className="break-words">{lead.title || "-"}</span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 pt-2 border-t">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pt-2 border-t">
                             <div>
                                 <p className="text-xs text-muted-foreground mb-1">Status</p>
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${getLeadStatusColor(lead.status)}`}>
@@ -134,7 +134,7 @@ function LeadInfoCard({
                                 <p className="text-xs text-muted-foreground mb-1">Replied</p>
                                 <span className="font-medium">{lead.has_replied ? "Yes" : "No"}</span>
                             </div>
-                            <div>
+                            <div className="w-full sm:w-auto pt-2 border-t sm:pt-0 sm:border-t-0 mt-1 sm:mt-0">
                                 <p className="text-xs text-muted-foreground mb-1">Next Email</p>
                                 <span className="text-sm">
                                     {lead.status === "completed" || lead.status === "replied" || lead.status === "failed"
@@ -219,38 +219,43 @@ function ActivityTimeline({
                                             onClick={() => toggleExpand(email.id)}
                                         >
                                             {/* Header - always visible */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    {email.status === "sent" ? (
-                                                        <Send size={14} className="text-green-600" />
-                                                    ) : email.status === "pending" ? (
-                                                        <Clock size={14} className="text-yellow-600" />
-                                                    ) : email.status === "received" ? (
-                                                        <Reply size={14} className="text-blue-600" />
-                                                    ) : (
-                                                        <AlertCircle size={14} className="text-red-600" />
-                                                    )}
-                                                    <span className="font-medium text-sm">
-                                                        {email.status === "received" || email.sequence_number <= 0
-                                                            ? "Reply Received"
-                                                            : `Email #${email.sequence_number}`}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {email.sent_at ? formatDate(email.sent_at) : formatDate(email.created_at)}
-                                                    </span>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        {email.status === "sent" ? (
+                                                            <Send size={14} className="text-green-600 flex-shrink-0" />
+                                                        ) : email.status === "pending" ? (
+                                                            <Clock size={14} className="text-yellow-600 flex-shrink-0" />
+                                                        ) : email.status === "received" ? (
+                                                            <Reply size={14} className="text-blue-600 flex-shrink-0" />
+                                                        ) : (
+                                                            <AlertCircle size={14} className="text-red-600 flex-shrink-0" />
+                                                        )}
+                                                        <span className="font-medium text-sm">
+                                                            {email.status === "received" || email.sequence_number <= 0
+                                                                ? "Reply Received"
+                                                                : `Email #${email.sequence_number}`}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                                                            {email.sent_at ? formatDate(email.sent_at) : formatDate(email.created_at)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
+                                                            {email.status}
+                                                        </span>
+                                                        <svg
+                                                            className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
-                                                        {email.status}
-                                                    </span>
-                                                    <svg
-                                                        className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                        stroke="currentColor"
-                                                    >
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
+                                                <div className="text-xs text-muted-foreground sm:hidden pl-6">
+                                                    {email.sent_at ? formatDate(email.sent_at) : formatDate(email.created_at)}
                                                 </div>
                                             </div>
 
@@ -317,8 +322,8 @@ function NotesCard({
                     className="min-h-[120px]"
                     disabled={loading}
                 />
-                <div className="flex gap-2">
-                    <Button onClick={handleSaveNotes} disabled={saving || loading}>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleSaveNotes} disabled={saving || loading} className="w-full sm:w-auto">
                         {saving ? "Saving..." : "Save Notes"}
                     </Button>
                     {leadReplied && (
@@ -326,7 +331,7 @@ function NotesCard({
                             variant="outline"
                             onClick={handleMarkAsReplied}
                             disabled={marking || loading}
-                            className="gap-2"
+                            className="gap-2 w-full sm:w-auto"
                         >
                             <CheckCircle2 size={16} />
                             {marking ? "Marking..." : "Mark as Replied"}

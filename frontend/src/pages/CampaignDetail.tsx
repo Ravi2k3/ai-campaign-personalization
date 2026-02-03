@@ -148,14 +148,19 @@ function CampaignDetailsHeader({
                     </>
                 ) : (
                     <>
-                        <h1 className="text-3xl font-bold">{campaign?.name}</h1>
-                        <p className="text-muted-foreground mt-1">
-                            {campaign?.sender_name} &lt;{campaign?.sender_email}&gt;
-                        </p>
+                        <h1 className="text-3xl font-bold break-words">{campaign?.name}</h1>
+                        <div className="flex flex-wrap items-center gap-1 text-muted-foreground mt-1">
+                            <span className="truncate max-w-full" title={campaign?.sender_name}>{campaign?.sender_name}</span>
+                            <div className="flex min-w-0" title={`<${campaign?.sender_email}>`}>
+                                <span>&lt;</span>
+                                <span className="truncate max-w-[200px] sm:max-w-[300px]">{campaign?.sender_email}</span>
+                                <span>&gt;</span>
+                            </div>
+                        </div>
                     </>
                 )}
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:flex-shrink-0">
                 {loading ? (
                     <>
                         <Skeleton className="h-10 w-36" />
@@ -169,12 +174,12 @@ function CampaignDetailsHeader({
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <span tabIndex={!canStart && !canStop ? 0 : undefined}>
+                                        <span tabIndex={!canStart && !canStop ? 0 : undefined} className="order-1 sm:order-none col-span-1">
                                             <Button
                                                 variant={canStart ? "default" : canStop ? "outline" : "secondary"}
                                                 onClick={onToggleStatus}
                                                 disabled={toggling || (!canStart && !canStop)}
-                                                className="gap-2"
+                                                className="gap-2 w-full sm:w-auto"
                                             >
                                                 {canStop ? (
                                                     <>
@@ -200,17 +205,17 @@ function CampaignDetailsHeader({
                         )}
                         {campaign?.status !== 'completed' && (
                             <>
-                                <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2">
+                                <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2 order-3 sm:order-none w-full sm:w-auto col-span-1">
                                     <Upload size={16} />
                                     Import CSV
                                 </Button>
-                                <Button onClick={() => setShowAddLead(true)} className="gap-2">
+                                <Button onClick={() => setShowAddLead(true)} className="gap-2 order-4 sm:order-none w-full sm:w-auto col-span-1">
                                     <UserPlus size={16} />
                                     Add Lead
                                 </Button>
                             </>
                         )}
-                        <Button variant="outline" size="icon" onClick={onDelete}>
+                        <Button variant="outline" size="icon" onClick={onDelete} className="order-2 sm:order-none justify-self-end sm:justify-self-auto col-span-1">
                             <Trash2 color="#ef4343" size={16} />
                         </Button>
                     </>
@@ -445,7 +450,9 @@ function LeadsTable({ leads, campaignId }: { leads: Lead[], campaignId: string }
                                 {lead.first_name} {lead.last_name}
                             </span>
                         </TableCell>
-                        <TableCell>{lead.email}</TableCell>
+                        <TableCell className="max-w-[200px]">
+                            <div className="truncate" title={lead.email}>{lead.email}</div>
+                        </TableCell>
                         <TableCell>{lead.company || "—"}</TableCell>
                         <TableCell>{lead.title || "—"}</TableCell>
                         <TableCell>
