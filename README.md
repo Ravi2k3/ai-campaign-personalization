@@ -1,4 +1,4 @@
-# Everis - AI Mail Personalization
+# Local AI Mail Personalization
 
 > Mini-SaaS for automated, AI-powered email outreach with intelligent follow-up sequences
 
@@ -12,7 +12,7 @@
 - **AI Personalization** – Generate human-like personalized emails using LLMs (Groq/OpenAI-compatible)
 - **Lead Management** – Import leads via CSV or add manually, view/delete individual leads
 - **Automated Follow-ups** – Configurable follow-up sequences with customizable delays
-- **Smart Scheduling** – Background scheduler processes eligible emails every minuteBackground cron job processes emails every minute
+- **Smart Scheduling** – Background scheduler processes eligible emails every minute
 - **Rate Limiting** – Configurable per-campaign rate limiting (50 emails/hour default) to protect sender reputation
 - **Reply Tracking** – Mark leads as replied manually or automatically via webhook to stop further outreach
 - **Email Activity Timeline** – View complete email history for each lead
