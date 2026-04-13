@@ -31,13 +31,11 @@ export default function CreateCampaignModal({
         delay_total?: string
         name?: string
         sender_name?: string
-        sender_email?: string
         goal?: string
     }>({})
     const [form, setForm] = useState({
         name: "",
         sender_name: "",
-        sender_email: "",
         goal: "",
         max_follow_ups: 3,
     })
@@ -132,13 +130,6 @@ export default function CreateCampaignModal({
             case "sender_name":
                 if (!value.trim()) error = "Sender name is required"
                 break
-            case "sender_email":
-                if (!value.trim()) {
-                    error = "Sender email is required"
-                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-                    error = "Invalid email address"
-                }
-                break
             case "goal":
                 if (!value.trim()) error = "Campaign goal is required"
                 break
@@ -159,12 +150,11 @@ export default function CreateCampaignModal({
 
         const isNameValid = validateField("name", form.name)
         const isSenderNameValid = validateField("sender_name", form.sender_name)
-        const isSenderEmailValid = validateField("sender_email", form.sender_email)
         const isGoalValid = validateField("goal", form.goal)
         const isMaxFollowUpsValid = validateMaxFollowUps(form.max_follow_ups)
         const isDelayValid = validateDelayFields(delayDays, delayHours, delayMinutes)
 
-        if (!isNameValid || !isSenderNameValid || !isSenderEmailValid || !isGoalValid || !isMaxFollowUpsValid || !isDelayValid) {
+        if (!isNameValid || !isSenderNameValid || !isGoalValid || !isMaxFollowUpsValid || !isDelayValid) {
             return
         }
 
@@ -175,7 +165,7 @@ export default function CreateCampaignModal({
                 ...form,
                 follow_up_delay_minutes: followUpDelayMinutes
             })
-            setForm({ name: "", sender_name: "", sender_email: "", goal: "", max_follow_ups: 3 })
+            setForm({ name: "", sender_name: "", goal: "", max_follow_ups: 3 })
             setDelayDays(2)
             setDelayHours(0)
             setDelayMinutes(0)
@@ -190,7 +180,7 @@ export default function CreateCampaignModal({
     }
 
     const hasFieldErrors = Object.values(fieldErrors).some(Boolean)
-    const hasEmptyFields = !form.name.trim() || !form.sender_name.trim() || !form.sender_email.trim() || !form.goal.trim()
+    const hasEmptyFields = !form.name.trim() || !form.sender_name.trim() || !form.goal.trim()
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -217,35 +207,21 @@ export default function CreateCampaignModal({
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="sender_name">Sender Name</Label>
-                            <Input
-                                id="sender_name"
-                                value={form.sender_name}
-                                onChange={handleInputChange}
-                                placeholder="John Doe"
-                                className={fieldErrors.sender_name ? "border-destructive" : ""}
-                            />
-                            {fieldErrors.sender_name && (
-                                <p className="text-xs text-destructive">{fieldErrors.sender_name}</p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="sender_email">Reply-To Email</Label>
-                            <Input
-                                id="sender_email"
-                                type="email"
-                                value={form.sender_email}
-                                onChange={handleInputChange}
-                                placeholder="john@company.com"
-                                className={fieldErrors.sender_email ? "border-destructive" : ""}
-                            />
-                            {fieldErrors.sender_email && (
-                                <p className="text-xs text-destructive">{fieldErrors.sender_email}</p>
-                            )}
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="sender_name">Sender Name</Label>
+                        <Input
+                            id="sender_name"
+                            value={form.sender_name}
+                            onChange={handleInputChange}
+                            placeholder="John Doe"
+                            className={fieldErrors.sender_name ? "border-destructive" : ""}
+                        />
+                        {fieldErrors.sender_name && (
+                            <p className="text-xs text-destructive">{fieldErrors.sender_name}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            Emails will be sent from your Google account.
+                        </p>
                     </div>
 
                     <div className="space-y-2">

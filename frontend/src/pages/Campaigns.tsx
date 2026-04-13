@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, Mail, Users } from "lucide-react"
 import CreateCampaignModal from "@/components/CreateCampaignModal"
+import UserMenu from "@/components/UserMenu"
 
 type Campaign = {
     id: string
@@ -50,10 +51,13 @@ function CampaignHeader({
                     <h1 className="text-3xl font-bold">Campaigns</h1>
                     <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
                 </div>
-                <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto">
-                    <Plus size={18} />
-                    Create Campaign
-                </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button onClick={() => setShowModal(true)} className="gap-2 flex-1 sm:flex-none">
+                        <Plus size={18} />
+                        Create Campaign
+                    </Button>
+                    <UserMenu />
+                </div>
             </div>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />

@@ -6,13 +6,14 @@ from datetime import datetime
 class CampaignCreate(BaseModel):
     name: str
     sender_name: str
-    sender_email: str
-    goal: str  # Required field for campaign personalization
+    goal: str
     follow_up_delay_minutes: int = 2880
     max_follow_ups: int = 3
 
+
 class CampaignResponse(BaseModel):
     id: str
+    user_id: Optional[str] = None
     name: str
     sender_name: str
     sender_email: str
