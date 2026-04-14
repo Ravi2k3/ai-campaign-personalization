@@ -10,9 +10,7 @@ import ErrorPage from "./ErrorPage"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import {
     Tooltip,
     TooltipContent,
@@ -37,9 +35,10 @@ import {
     Play,
     Pause,
     Trash2,
-    ExternalLink,
+    ArrowUpRight,
     Mail,
-    Gauge
+    Gauge,
+    Target
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
@@ -79,387 +78,15 @@ type Lead = {
     current_sequence: number
 }
 
-
-function LeadsTableSkeleton() {
-    return (
-        <Table>
-            <TableHeader className="sticky top-0 bg-background z-10">
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Sequence</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {[1, 2, 3, 4, 5].map((i) => (
-                    <TableRow key={i}>
-                        <TableCell><Skeleton className="h-4 w-full max-w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full max-w-40" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full max-w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full max-w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full max-w-16" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full max-w-8" /></TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    )
-}
-
-function CampaignDetailsHeader({
-    loading,
-    campaign,
-    leadsCount,
-    setShowAddLead,
-    setShowImportCSV,
-    onToggleStatus,
-    toggling,
-    onDelete
-}: {
-    loading: boolean
-    campaign: Campaign | null
-    leadsCount: number
-    setShowAddLead: (show: boolean) => void
-    setShowImportCSV: (show: boolean) => void
-    onToggleStatus: () => void
-    toggling: boolean
-    onDelete: () => void
-}) {
-    const canStart = (campaign?.status === "draft" || campaign?.status === "paused") && leadsCount > 0
-    const canStop = campaign?.status === "active"
-    const showToggle = (campaign?.status === "draft" || campaign?.status === "paused" || campaign?.status === "active")
-
-    return (
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
-            <div className="min-w-0 w-full sm:flex-1">
-                {loading ? (
-                    <>
-                        <Skeleton className="h-8 w-full max-w-48 mb-2" />
-                        <Skeleton className="h-4 w-full max-w-64" />
-                    </>
-                ) : (
-                    <>
-                        <h1 className="text-3xl font-bold break-words">{campaign?.name}</h1>
-                        <div className="flex flex-wrap items-center gap-1 text-muted-foreground mt-1">
-                            <span className="truncate max-w-full" title={campaign?.sender_name}>{campaign?.sender_name}</span>
-                            <div className="flex min-w-0" title={`<${campaign?.sender_email}>`}>
-                                <span>&lt;</span>
-                                <span className="truncate max-w-[200px] sm:max-w-[300px]">{campaign?.sender_email}</span>
-                                <span>&gt;</span>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-            <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:flex-shrink-0">
-                {loading ? (
-                    <>
-                        <Skeleton className="h-10 w-36" />
-                        <Skeleton className="h-10 w-28" />
-                        <Skeleton className="h-10 w-28" />
-                        <Skeleton className="h-10 w-10" />
-                    </>
-                ) : (
-                    <>
-                        {showToggle && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span tabIndex={!canStart && !canStop ? 0 : undefined} className="order-1 sm:order-none col-span-1">
-                                            <Button
-                                                variant={canStart ? "default" : canStop ? "outline" : "secondary"}
-                                                onClick={onToggleStatus}
-                                                disabled={toggling || (!canStart && !canStop)}
-                                                className="gap-2 w-full sm:w-auto"
-                                            >
-                                                {canStop ? (
-                                                    <>
-                                                        <Pause size={16} />
-                                                        {toggling ? "Pausing..." : "Pause"}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Play size={16} />
-                                                        {toggling ? "Starting..." : "Start"}
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </span>
-                                    </TooltipTrigger>
-                                    {!canStart && !canStop && (
-                                        <TooltipContent>
-                                            <p>Add leads to start campaign</p>
-                                        </TooltipContent>
-                                    )}
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                        {campaign?.status !== 'completed' && (
-                            <>
-                                <Button variant="outline" onClick={() => setShowImportCSV(true)} className="gap-2 order-3 sm:order-none w-full sm:w-auto col-span-1">
-                                    <Upload size={16} />
-                                    Import CSV
-                                </Button>
-                                <Button onClick={() => setShowAddLead(true)} className="gap-2 order-4 sm:order-none w-full sm:w-auto col-span-1">
-                                    <UserPlus size={16} />
-                                    Add Lead
-                                </Button>
-                            </>
-                        )}
-                        <Button variant="outline" size="icon" onClick={onDelete} className="order-2 sm:order-none justify-self-end sm:justify-self-auto col-span-1">
-                            <Trash2 color="#ef4343" size={16} />
-                        </Button>
-                    </>
-                )}
-            </div>
-        </div>
-    )
-}
-
 function formatDelay(minutes: number): string {
     const days = Math.floor(minutes / (24 * 60))
     const hours = Math.floor((minutes % (24 * 60)) / 60)
     const mins = minutes % 60
-
     const parts = []
     if (days > 0) parts.push(`${days}d`)
     if (hours > 0) parts.push(`${hours}h`)
     if (mins > 0 || parts.length === 0) parts.push(`${mins}m`)
     return parts.join(" ")
-}
-
-
-function CampaignProgressCard({
-    stats,
-    loading,
-    campaignStatus
-}: {
-    stats: CampaignStats | null
-    loading: boolean
-    campaignStatus: string | undefined
-}) {
-    if (loading) {
-        return (
-            <Card className="mb-6">
-                <CardContent className="py-4 px-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[1, 2].map(i => (
-                            <div key={i} className="space-y-2">
-                                <Skeleton className="h-4 w-32" />
-                                <Skeleton className="h-2 w-full" />
-                                <Skeleton className="h-3 w-24" />
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-        )
-    }
-
-    if (!stats) return null
-
-    const hasLeads = stats.emails_target > 0
-    const campaignProgress = hasLeads
-        ? Math.min(100, Math.round((stats.emails_sent / stats.emails_target) * 100))
-        : 0
-    const rateLimitProgress = Math.min(100, Math.round((stats.emails_in_window / stats.rate_limit) * 100))
-    const isRateLimited = stats.rate_limit_remaining === 0
-
-    return (
-        <Card className="mb-6">
-            <CardContent className="py-4 px-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Campaign Progress */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Mail size={14} className="text-muted-foreground" />
-                                <span className="text-sm font-medium">Campaign Progress</span>
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                                {hasLeads ? `${stats.emails_sent} / ${stats.emails_target} emails` : "No leads yet"}
-                            </span>
-                        </div>
-                        <Progress value={campaignProgress} className="h-2" />
-                        <p className="text-xs text-muted-foreground">
-                            {hasLeads ? `${campaignProgress}% complete` : "Add leads to start"}
-                        </p>
-                    </div>
-
-                    {/* Sending Quota */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Gauge size={14} className="text-muted-foreground" />
-                                <span className="text-sm font-medium">Sending Quota</span>
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                                {campaignStatus === "completed" ? "—" : `${stats.emails_in_window} of ${stats.rate_limit} used`}
-                            </span>
-                        </div>
-                        <Progress
-                            value={campaignStatus === "completed" ? 100 : rateLimitProgress}
-                            className="h-2"
-                            indicatorClassName={
-                                campaignStatus === "completed"
-                                    ? undefined
-                                    : isRateLimited
-                                        ? "bg-red-500"
-                                        : rateLimitProgress > 80
-                                            ? "bg-yellow-500"
-                                            : undefined
-                            }
-                        />
-                        <p className={`text-xs ${campaignStatus === "completed"
-                            ? "text-muted-foreground"
-                            : isRateLimited
-                                ? "text-red-500 font-medium"
-                                : "text-muted-foreground"
-                            }`}>
-                            {campaignStatus === "completed"
-                                ? "Campaign completed ✓"
-                                : isRateLimited
-                                    ? (() => {
-                                        const resetTime = formatTime(stats.rate_limit_resets_at)
-                                        return resetTime
-                                            ? <>Paused until {resetTime.time} <span className="text-red-400 font-normal">{resetTime.timezone}</span></>
-                                            : "Paused - resuming soon"
-                                    })()
-                                    : stats.rate_limit_remaining === stats.rate_limit
-                                        ? "Ready to send"
-                                        : `${stats.rate_limit_remaining} more email${stats.rate_limit_remaining === 1 ? "" : "s"} available`}
-                        </p>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
-
-function CampaignInfoCard({
-    campaign,
-    leadsCount,
-    loading
-}: {
-    campaign: Campaign | null,
-    leadsCount: number,
-    loading: boolean
-}) {
-    if (loading) {
-        return (
-            <Card className="mb-6">
-                <CardContent className="py-4 px-5">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="space-y-1">
-                                <Skeleton className="h-3 w-full max-w-16" />
-                                <Skeleton className="h-5 w-full max-w-24" />
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-        )
-    }
-
-    if (!campaign) return null
-
-    return (
-        <Card className="mb-6">
-            <CardContent className="py-4 px-5">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Status</p>
-                        {(() => { const s = getCampaignStatus(campaign.status); return (
-                            <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
-                        ) })()}
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Leads</p>
-                        <div className="flex items-center gap-1.5">
-                            <Users size={14} className="text-muted-foreground" />
-                            <span className="font-medium">{leadsCount}</span>
-                        </div>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Follow-up Delay</p>
-                        <div className="flex items-center gap-1.5">
-                            <Clock size={14} className="text-muted-foreground" />
-                            <span className="font-medium">{formatDelay(campaign.follow_up_delay_minutes)}</span>
-                        </div>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Max Follow-ups</p>
-                        <div className="flex items-center gap-1.5">
-                            <RefreshCw size={14} className="text-muted-foreground" />
-                            <span className="font-medium">{campaign.max_follow_ups}</span>
-                        </div>
-                    </div>
-                </div>
-                {campaign.goal && (
-                    <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Goal</p>
-                        <p className="text-sm text-foreground">{campaign.goal}</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    )
-}
-
-function LeadsTable({ leads, campaignId }: { leads: Lead[], campaignId: string }) {
-    return (
-        <Table>
-            <TableHeader className="sticky top-0 bg-background z-10 shadow-md">
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Sequence</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {leads.map((lead) => (
-                    <TableRow
-                        key={lead.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors group"
-                        onClick={() => window.location.href = `/campaigns/${campaignId}/leads/${lead.id}`}
-                    >
-                        <TableCell className="font-medium">
-                            <span className="inline-flex items-center gap-2 text-primary group-hover:underline">
-                                <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                                {lead.first_name} {lead.last_name}
-                            </span>
-                        </TableCell>
-                        <TableCell className="max-w-[200px]">
-                            <div className="truncate" title={lead.email}>{lead.email}</div>
-                        </TableCell>
-                        <TableCell>{lead.company || "—"}</TableCell>
-                        <TableCell>{lead.title || "—"}</TableCell>
-                        <TableCell>
-                            {(() => { const s = getLeadStatus(lead.status); return (
-                                <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
-                            ) })()}
-                        </TableCell>
-                        <TableCell>{lead.current_sequence}</TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    )
-}
-
-function LeadsEmptyState() {
-    return (
-        <div className="text-center py-16 border border-dashed rounded-lg">
-            <p className="text-muted-foreground">No leads yet. Add leads manually or import from CSV.</p>
-        </div>
-    )
 }
 
 export default function CampaignDetail() {
@@ -490,8 +117,7 @@ export default function CampaignDetail() {
             lead.email.toLowerCase().includes(query) ||
             (lead.company && lead.company.toLowerCase().includes(query)) ||
             (lead.title && lead.title.toLowerCase().includes(query)) ||
-            lead.status.toLowerCase().includes(query) ||
-            lead.current_sequence.toString().includes(query)
+            lead.status.toLowerCase().includes(query)
         )
     }, [leads, searchQuery])
 
@@ -525,17 +151,13 @@ export default function CampaignDetail() {
     }
 
     const handleToggleStatus = async () => {
-        if (!id || !campaign || toggling) return // Prevent multiple clicks
-
+        if (!id || !campaign || toggling) return
         const action = campaign.status === "active" ? "stop" : "start"
-
         setToggling(true)
-
         try {
             const result = await patch<Campaign>(`/campaigns/${id}/status?action=${action}`, {})
-            // Update with server response
             setCampaign(result)
-            toast.success(`Campaign ${action === "start" ? "started" : "paused"} successfully`)
+            toast.success(`Campaign ${action === "start" ? "started" : "paused"}`)
         } catch (err) {
             toast.error(parseApiError(err))
         } finally {
@@ -544,7 +166,6 @@ export default function CampaignDetail() {
     }
 
     if (error) {
-        // Determine if it's a 404 or 500 error
         const is404 = error.toLowerCase().includes("not found") || error.toLowerCase().includes("404")
         return (
             <ErrorPage
@@ -555,91 +176,302 @@ export default function CampaignDetail() {
         )
     }
 
+    const canStart = (campaign?.status === "draft" || campaign?.status === "paused") && leads.length > 0
+    const canStop = campaign?.status === "active"
+    const showToggle = campaign?.status === "draft" || campaign?.status === "paused" || campaign?.status === "active"
+    const isCompleted = campaign?.status === "completed"
+
+    const hasLeads = stats ? stats.emails_target > 0 : false
+    const campaignProgress = hasLeads && stats
+        ? Math.min(100, Math.round((stats.emails_sent / stats.emails_target) * 100))
+        : 0
+    const rateLimitProgress = stats
+        ? Math.min(100, Math.round((stats.emails_in_window / stats.rate_limit) * 100))
+        : 0
+    const isRateLimited = stats ? stats.rate_limit_remaining === 0 : false
+
     return (
-        <div className="min-h-screen bg-background p-8 flex flex-col">
-            <div className="max-w-6xl mx-auto w-full flex flex-col flex-1">
-                {/* Header */}
-                <div className="flex-shrink-0">
-                    <CampaignDetailsHeader
-                        loading={loading}
-                        campaign={campaign}
-                        leadsCount={leads.length}
-                        setShowAddLead={setShowAddLead}
-                        setShowImportCSV={setShowImportCSV}
-                        onToggleStatus={handleToggleStatus}
-                        toggling={toggling}
-                        onDelete={() => setShowDelete(true)}
-                    />
-                </div>
+        <div className="px-6 sm:px-8 py-8">
+            <div className="max-w-6xl mx-auto space-y-6">
 
-                {/* Campaign Info Card */}
-                <div className="flex-shrink-0">
-                    <CampaignInfoCard campaign={campaign} leadsCount={leads.length} loading={loading} />
-                </div>
+                {/* ── Header ───────────────────────────────────────── */}
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                        {loading ? (
+                            <>
+                                <Skeleton className="h-9 w-64 mb-2" />
+                                <Skeleton className="h-4 w-48" />
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <h1 className="heading-serif text-4xl tracking-tight truncate">
+                                        {campaign?.name}
+                                    </h1>
+                                    {campaign && (() => {
+                                        const s = getCampaignStatus(campaign.status)
+                                        return <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+                                    })()}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {campaign?.sender_name} &middot; {campaign?.sender_email}
+                                </p>
+                            </>
+                        )}
+                    </div>
 
-                {/* Campaign Progress Card */}
-                <div className="flex-shrink-0">
-                    <CampaignProgressCard stats={stats} loading={loading} campaignStatus={campaign?.status} />
-                </div>
-
-                {loading ? (
-                    <Skeleton className="h-9 w-32 mb-4" />
-                ) : (
-                    <h1 className="text-3xl font-bold pb-3">Leads</h1>
-                )}
-
-                {/* Search Bar */}
-                <div className="flex-shrink-0 mb-4">
-                    {loading ? (
-                        <Skeleton className="h-10 w-full" />
-                    ) : (
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                            <Input
-                                placeholder="Search by name, email, company, title, status, or sequence..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
-                            />
+                    {!loading && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            {showToggle && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span>
+                                                <Button
+                                                    variant={canStart ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={handleToggleStatus}
+                                                    disabled={toggling || (!canStart && !canStop)}
+                                                    className="gap-1.5"
+                                                >
+                                                    {canStop ? <Pause size={14} /> : <Play size={14} />}
+                                                    {canStop
+                                                        ? (toggling ? "Pausing..." : "Pause")
+                                                        : (toggling ? "Starting..." : "Start")}
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        {!canStart && !canStop && (
+                                            <TooltipContent>Add leads to start campaign</TooltipContent>
+                                        )}
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                            {!isCompleted && (
+                                <>
+                                    <Button variant="outline" size="sm" onClick={() => setShowImportCSV(true)} className="gap-1.5">
+                                        <Upload size={14} /> Import
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => setShowAddLead(true)} className="gap-1.5">
+                                        <UserPlus size={14} /> Add Lead
+                                    </Button>
+                                </>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => setShowDelete(true)} className="text-muted-foreground hover:text-destructive">
+                                <Trash2 size={14} />
+                            </Button>
                         </div>
                     )}
                 </div>
 
-                {/* Leads Table - min 30vh, grows to fill remaining space */}
+                {/* ── Stats Row ─────────────────────────────────────── */}
                 {loading ? (
-                    <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
-                        <LeadsTableSkeleton />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[1, 2, 3, 4].map(i => (
+                            <Skeleton key={i} className="h-20 rounded-xl" />
+                        ))}
                     </div>
-                ) : filteredLeads.length === 0 ? (
-                    <LeadsEmptyState />
-                ) : (
-                    <div className="min-h-[40vh] max-h-[calc(100vh-20rem)] flex-1 border rounded-lg overflow-auto">
-                        <LeadsTable leads={filteredLeads} campaignId={id!} />
+                ) : campaign && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <Users size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Leads</span>
+                            </div>
+                            <p className="text-2xl font-semibold">{leads.length}</p>
+                        </div>
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <Clock size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Follow-up Delay</span>
+                            </div>
+                            <p className="text-2xl font-semibold">{formatDelay(campaign.follow_up_delay_minutes)}</p>
+                        </div>
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <RefreshCw size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Max Follow-ups</span>
+                            </div>
+                            <p className="text-2xl font-semibold">{campaign.max_follow_ups}</p>
+                        </div>
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <Mail size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Emails Sent</span>
+                            </div>
+                            <p className="text-2xl font-semibold">
+                                {stats ? stats.emails_sent : 0}
+                                <span className="text-sm font-normal text-muted-foreground">
+                                    {stats ? ` / ${stats.emails_target}` : ""}
+                                </span>
+                            </p>
+                        </div>
                     </div>
                 )}
 
+                {/* ── Progress Bars ─────────────────────────────────── */}
+                {!loading && stats && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-card border rounded-xl p-4 space-y-2">
+                            <div className="flex items-center justify-between text-[13px]">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Target size={13} />
+                                    <span className="font-medium">Campaign Progress</span>
+                                </div>
+                                <span className="text-muted-foreground">
+                                    {hasLeads ? `${campaignProgress}%` : "No leads"}
+                                </span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                    className="h-full rounded-full transition-all bg-emerald-500"
+                                    style={{ width: `${campaignProgress}%` }}
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-card border rounded-xl p-4 space-y-2">
+                            <div className="flex items-center justify-between text-[13px]">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Gauge size={13} />
+                                    <span className="font-medium">Sending Quota</span>
+                                </div>
+                                <span className="text-muted-foreground">
+                                    {isCompleted
+                                        ? "Done"
+                                        : `${stats.emails_in_window} / ${stats.rate_limit}`}
+                                </span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all ${
+                                        isCompleted ? "bg-muted-foreground/30"
+                                        : isRateLimited ? "bg-red-500"
+                                        : rateLimitProgress > 80 ? "bg-yellow-500"
+                                        : "bg-emerald-500"
+                                    }`}
+                                    style={{ width: `${isCompleted ? 100 : rateLimitProgress}%` }}
+                                />
+                            </div>
+                            {!isCompleted && isRateLimited && stats.rate_limit_resets_at && (
+                                <p className="text-[11px] text-red-500 font-medium">
+                                    Paused until {(() => {
+                                        const t = formatTime(stats.rate_limit_resets_at)
+                                        return t ? `${t.time} ${t.timezone}` : "soon"
+                                    })()}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-                {/* Modals */}
+                {/* ── Goal ──────────────────────────────────────────── */}
+                {!loading && campaign?.goal && (
+                    <div className="bg-card border rounded-xl p-4">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Campaign Goal</p>
+                        <p className="text-[14px] leading-relaxed">{campaign.goal}</p>
+                    </div>
+                )}
+
+                {/* ── Leads Section ─────────────────────────────────── */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">Leads</h2>
+                        {!loading && <span className="text-[12px] text-muted-foreground">{filteredLeads.length} total</span>}
+                    </div>
+
+                    {!loading && (
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
+                            <Input
+                                placeholder="Search leads..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 h-9 text-sm"
+                            />
+                        </div>
+                    )}
+
+                    {loading ? (
+                        <div className="border rounded-xl overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Company</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Seq</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <TableRow key={i}>
+                                            <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-6" /></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : filteredLeads.length === 0 ? (
+                        <div className="text-center py-16 border border-dashed rounded-xl">
+                            <p className="text-muted-foreground text-sm">
+                                {leads.length === 0 ? "No leads yet. Add leads manually or import from CSV." : "No leads match your search."}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="border rounded-xl overflow-auto max-h-[50vh]">
+                            <Table>
+                                <TableHeader className="sticky top-0 bg-card z-10">
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Company</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Seq</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredLeads.map(lead => {
+                                        const s = getLeadStatus(lead.status)
+                                        return (
+                                            <TableRow
+                                                key={lead.id}
+                                                className="cursor-pointer group"
+                                                onClick={() => window.location.href = `/campaigns/${id}/leads/${lead.id}`}
+                                            >
+                                                <TableCell>
+                                                    <span className="inline-flex items-center gap-1.5 font-medium text-[13px] group-hover:text-primary transition-colors">
+                                                        {lead.first_name} {lead.last_name}
+                                                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-[13px] text-muted-foreground max-w-[200px]">
+                                                    <span className="truncate block" title={lead.email}>{lead.email}</span>
+                                                </TableCell>
+                                                <TableCell className="text-[13px]">{lead.company || "—"}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={s.variant} className={`${s.className} text-[11px]`}>{s.label}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-[13px] text-muted-foreground">{lead.current_sequence}</TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Modals ────────────────────────────────────────── */}
                 {id && (
                     <>
-                        <AddLeadModal
-                            open={showAddLead}
-                            onClose={() => setShowAddLead(false)}
-                            onSuccess={handleLeadsAdded}
-                            campaignId={id}
-                        />
-                        <ImportCSVModal
-                            open={showImportCSV}
-                            onClose={() => setShowImportCSV(false)}
-                            onSuccess={handleLeadsAdded}
-                            campaignId={id}
-                        />
-                        <DeleteCampaignModal
-                            open={showDelete}
-                            onClose={() => setShowDelete(false)}
-                            campaignId={id}
-                            campaignName={campaign?.name || ""}
-                        />
+                        <AddLeadModal open={showAddLead} onClose={() => setShowAddLead(false)} onSuccess={handleLeadsAdded} campaignId={id} />
+                        <ImportCSVModal open={showImportCSV} onClose={() => setShowImportCSV(false)} onSuccess={handleLeadsAdded} campaignId={id} />
+                        <DeleteCampaignModal open={showDelete} onClose={() => setShowDelete(false)} campaignId={id} campaignName={campaign?.name || ""} />
                     </>
                 )}
             </div>

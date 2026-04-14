@@ -159,8 +159,8 @@ html {
     @apply bg-background text-foreground;
   }
 
-  /* Serif headings for editorial feel */
-  h1 {
+  /* Serif only on explicitly marked headings, not all h1s */
+  .heading-serif {
     font-family: 'Instrument Serif', Georgia, serif;
     font-weight: 400;
     letter-spacing: -0.01em;

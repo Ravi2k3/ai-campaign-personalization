@@ -165,7 +165,7 @@ export default function Campaigns() {
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                         <div>
-                            <h1 className="text-4xl tracking-tight">Campaigns</h1>
+                            <h1 className="heading-serif text-4xl tracking-tight">Campaigns</h1>
                             <p className="text-muted-foreground text-sm mt-1">Manage your email outreach campaigns</p>
                         </div>
                         <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto" size="sm">
