@@ -14,7 +14,7 @@ router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 _CAMPAIGN_COLS = """
     id, user_id, name, sender_name, sender_email, goal,
     follow_up_delay_minutes, max_follow_ups, status,
-    created_at, updated_at
+    scheduled_start_at, created_at, updated_at
 """
 
 
@@ -38,18 +38,19 @@ async def create_campaign(
         cur.execute(
             f"""
             INSERT INTO campaigns (user_id, name, sender_name, sender_email, goal,
-                                   follow_up_delay_minutes, max_follow_ups)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                   follow_up_delay_minutes, max_follow_ups, scheduled_start_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING {_CAMPAIGN_COLS}
             """,
             (
                 user["id"],
                 campaign.name,
                 campaign.sender_name,
-                user["email"],  # sender_email is always the authenticated user's Gmail
+                user["email"],
                 campaign.goal,
                 campaign.follow_up_delay_minutes,
                 campaign.max_follow_ups,
+                campaign.scheduled_start_at,
             ),
         )
         new_campaign = cur.fetchone()
@@ -133,6 +134,10 @@ async def update_campaign(
         if update.max_follow_ups is not None:
             updates.append("max_follow_ups = %s")
             params.append(update.max_follow_ups)
+        if update.scheduled_start_at is not None:
+            updates.append("scheduled_start_at = %s")
+            # Allow clearing by passing empty string
+            params.append(update.scheduled_start_at if update.scheduled_start_at else None)
 
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update")
@@ -302,6 +307,56 @@ async def update_campaign_status(
     return updated_campaign
 
 
+@router.post("/{campaign_id}/duplicate", response_model=CampaignResponse)
+async def duplicate_campaign(
+    campaign_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Duplicate a campaign with all its leads into a new draft campaign."""
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            f"SELECT {_CAMPAIGN_COLS} FROM campaigns WHERE id = %s AND user_id = %s",
+            (campaign_id, user["id"]),
+        )
+        original = cur.fetchone()
+
+        if not original:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        # Create new campaign with same settings
+        cur.execute(
+            f"""
+            INSERT INTO campaigns (user_id, name, sender_name, sender_email, goal,
+                                   follow_up_delay_minutes, max_follow_ups, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'draft')
+            RETURNING {_CAMPAIGN_COLS}
+            """,
+            (
+                user["id"],
+                f"{original['name']} (Copy)",
+                original["sender_name"],
+                original["sender_email"],
+                original["goal"],
+                original["follow_up_delay_minutes"],
+                original["max_follow_ups"],
+            ),
+        )
+        new_campaign = cur.fetchone()
+        new_id = new_campaign["id"]
+
+        # Copy all leads from original campaign
+        cur.execute(
+            """
+            INSERT INTO leads (campaign_id, email, first_name, last_name, company, title, notes)
+            SELECT %s, email, first_name, last_name, company, title, notes
+            FROM leads WHERE campaign_id = %s
+            """,
+            (str(new_id), campaign_id),
+        )
+
+    return new_campaign
+
+
 @router.get("/{campaign_id}/stats")
 async def get_campaign_stats(
     campaign_id: str,
@@ -369,11 +424,39 @@ async def get_campaign_stats(
         emails_in_window = window_result["count"]
         oldest_in_window = window_result["oldest_sent_at"]
 
+        # Analytics: lead counts and reply metrics
+        cur.execute(
+            "SELECT COUNT(*) as count FROM leads WHERE campaign_id = %s",
+            (campaign_id,),
+        )
+        total_leads = cur.fetchone()["count"]
+
+        cur.execute(
+            "SELECT COUNT(*) as count FROM leads WHERE campaign_id = %s AND has_replied = true",
+            (campaign_id,),
+        )
+        reply_count = cur.fetchone()["count"]
+
+        cur.execute(
+            "SELECT status, COUNT(*) as count FROM leads WHERE campaign_id = %s GROUP BY status",
+            (campaign_id,),
+        )
+        leads_by_status = {row["status"]: row["count"] for row in cur.fetchall()}
+
+        cur.execute(
+            "SELECT AVG(current_sequence) as avg_seq FROM leads WHERE campaign_id = %s AND has_replied = true",
+            (campaign_id,),
+        )
+        avg_row = cur.fetchone()
+        avg_sequence_at_reply = float(avg_row["avg_seq"]) if avg_row and avg_row["avg_seq"] else None
+
     rate_limit_remaining = max(0, CAMPAIGN_EMAIL_RATE_LIMIT - emails_in_window)
 
     rate_limit_resets_at = None
     if oldest_in_window and rate_limit_remaining == 0:
         rate_limit_resets_at = oldest_in_window + timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
+
+    reply_rate = round((reply_count / total_leads) * 100, 1) if total_leads > 0 else 0.0
 
     return {
         "emails_sent": emails_sent,
@@ -385,4 +468,9 @@ async def get_campaign_stats(
         "rate_limit_resets_at": (
             rate_limit_resets_at.isoformat() if rate_limit_resets_at else None
         ),
+        "total_leads": total_leads,
+        "reply_count": reply_count,
+        "reply_rate": reply_rate,
+        "leads_by_status": leads_by_status,
+        "avg_sequence_at_reply": avg_sequence_at_reply,
     }

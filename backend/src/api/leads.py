@@ -7,6 +7,7 @@ from ..db import get_cursor
 from .models import (
     LeadCreate,
     LeadBulkCreate,
+    LeadBulkDelete,
     LeadResponse,
     LeadUpdate,
     LeadDetailResponse,
@@ -167,6 +168,27 @@ async def delete_lead(
         raise HTTPException(status_code=404, detail="Lead not found")
 
     return {"message": "Lead deleted"}
+
+
+@router.post("/bulk-delete")
+async def bulk_delete_leads(
+    campaign_id: str,
+    data: LeadBulkDelete,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Delete multiple leads from a campaign at once."""
+    if not data.lead_ids:
+        raise HTTPException(status_code=400, detail="No lead IDs provided")
+
+    with get_cursor(commit=True) as cur:
+        _verify_campaign_ownership(cur, campaign_id, user["id"])
+        cur.execute(
+            "DELETE FROM leads WHERE id = ANY(%s::uuid[]) AND campaign_id = %s",
+            (data.lead_ids, campaign_id),
+        )
+        deleted_count = cur.rowcount
+
+    return {"message": f"{deleted_count} lead(s) deleted", "count": deleted_count}
 
 
 @detail_router.get("/{lead_id}", response_model=LeadDetailResponse)

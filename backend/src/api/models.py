@@ -9,6 +9,7 @@ class CampaignCreate(BaseModel):
     goal: str
     follow_up_delay_minutes: int = 2880
     max_follow_ups: int = 3
+    scheduled_start_at: Optional[str] = None
 
 
 class CampaignResponse(BaseModel):
@@ -21,6 +22,7 @@ class CampaignResponse(BaseModel):
     follow_up_delay_minutes: int
     max_follow_ups: int
     status: str
+    scheduled_start_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -56,6 +58,7 @@ class CampaignUpdate(BaseModel):
     goal: Optional[str] = None
     follow_up_delay_minutes: Optional[int] = None
     max_follow_ups: Optional[int] = None
+    scheduled_start_at: Optional[str] = None
 
 
 class LeadUpdate(BaseModel):
@@ -67,6 +70,10 @@ class LeadUpdate(BaseModel):
     notes: Optional[str] = None
     has_replied: Optional[bool] = None
     status: Optional[str] = None
+
+
+class LeadBulkDelete(BaseModel):
+    lead_ids: List[str]
 
 
 class EmailPreviewResponse(BaseModel):

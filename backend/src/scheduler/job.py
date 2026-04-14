@@ -958,6 +958,58 @@ async def check_replies_job() -> None:
         logger.error(f"[REPLY-CHECK] Reply checking job failed: {e}")
 
 
+# ── Scheduled Campaign Auto-Start ───────────────────────────────────────────
+
+
+async def check_scheduled_campaigns() -> None:
+    """
+    Auto-start campaigns whose scheduled_start_at has passed.
+    Runs every 60s. Activates draft campaigns and queues their pending leads.
+    """
+    try:
+        with get_cursor(commit=True) as cur:
+            # Find draft campaigns whose scheduled time has arrived
+            cur.execute(
+                """
+                SELECT id FROM campaigns
+                WHERE status = 'draft'
+                  AND scheduled_start_at IS NOT NULL
+                  AND scheduled_start_at <= NOW()
+                """
+            )
+            campaigns = cur.fetchall()
+
+            for campaign in campaigns:
+                cid = str(campaign["id"])
+
+                # Check campaign has leads
+                cur.execute("SELECT COUNT(*) as count FROM leads WHERE campaign_id = %s", (cid,))
+                if cur.fetchone()["count"] == 0:
+                    logger.warning(f"[SCHEDULE] Campaign {cid} scheduled but has no leads, skipping")
+                    continue
+
+                # Activate campaign
+                cur.execute(
+                    "UPDATE campaigns SET status = 'active', updated_at = NOW() WHERE id = %s",
+                    (cid,),
+                )
+
+                # Queue pending leads
+                cur.execute(
+                    """
+                    UPDATE leads
+                    SET next_email_at = NOW(), updated_at = NOW()
+                    WHERE campaign_id = %s AND status = 'pending' AND next_email_at IS NULL
+                    """,
+                    (cid,),
+                )
+
+                logger.info(f"[SCHEDULE] Auto-started campaign {cid}")
+
+    except Exception as e:
+        logger.error(f"[SCHEDULE] Scheduled campaign check failed: {e}")
+
+
 # ── Scheduler Lifecycle ─────────────────────────────────────────────────────
 
 
@@ -981,12 +1033,22 @@ def start_scheduler() -> None:
         next_run_time=datetime.now(),
     )
 
-    # Reply checking job: runs every 5 minutes (configurable)
+    # Reply checking job: runs every 60s (configurable)
     scheduler.add_job(
         check_replies_job,
         trigger=IntervalTrigger(seconds=REPLY_CHECK_INTERVAL_SECONDS),
         id="reply_checking_job",
         name="Check for email replies via IMAP",
+        replace_existing=True,
+        next_run_time=datetime.now(),
+    )
+
+    # Scheduled campaign auto-start: runs every 60s
+    scheduler.add_job(
+        check_scheduled_campaigns,
+        trigger=IntervalTrigger(seconds=60),
+        id="scheduled_campaign_job",
+        name="Auto-start scheduled campaigns",
         replace_existing=True,
         next_run_time=datetime.now(),
     )

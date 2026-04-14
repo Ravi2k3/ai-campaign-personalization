@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { useParams } from "react-router-dom"
-import { get, patch } from "@/lib/api"
+import { useParams, useNavigate } from "react-router-dom"
+import { get, post, patch } from "@/lib/api"
 import { formatTime } from "@/lib/utils"
 import { getCampaignStatus, getLeadStatus } from "@/lib/status"
 import { parseApiError } from "@/lib/errors"
@@ -43,7 +43,11 @@ import {
     Eye,
     Pencil,
     Check,
-    X
+    X,
+    Copy,
+    CalendarClock,
+    MessageSquareReply,
+    StickyNote
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
@@ -59,6 +63,7 @@ type Campaign = {
     follow_up_delay_minutes: number
     max_follow_ups: number
     status: string
+    scheduled_start_at: string | null
 }
 
 type CampaignStats = {
@@ -69,6 +74,11 @@ type CampaignStats = {
     rate_limit_window_minutes: number
     rate_limit_remaining: number
     rate_limit_resets_at: string | null
+    total_leads: number
+    reply_count: number
+    reply_rate: number
+    leads_by_status: Record<string, number>
+    avg_sequence_at_reply: number | null
 }
 
 type Lead = {
@@ -79,6 +89,7 @@ type Lead = {
     last_name: string
     company: string | null
     title: string | null
+    notes: string | null
     status: string
     has_replied: boolean
     current_sequence: number
@@ -109,8 +120,11 @@ export default function CampaignDetail() {
     const [showDelete, setShowDelete] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const [editing, setEditing] = useState(false)
-    const [editForm, setEditForm] = useState({ name: "", sender_name: "", goal: "", follow_up_delay_minutes: 0, max_follow_ups: 0 })
+    const [editForm, setEditForm] = useState({ name: "", sender_name: "", goal: "", follow_up_delay_minutes: 0, max_follow_ups: 0, scheduled_start_at: "" })
     const [saving, setSaving] = useState(false)
+    const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
+    const [bulkDeleting, setBulkDeleting] = useState(false)
+    const navigate = useNavigate()
 
     useBreadcrumbs([
         { label: "Campaigns", href: "/" },
@@ -183,6 +197,7 @@ export default function CampaignDetail() {
             goal: campaign.goal || "",
             follow_up_delay_minutes: campaign.follow_up_delay_minutes,
             max_follow_ups: campaign.max_follow_ups,
+            scheduled_start_at: campaign.scheduled_start_at ? new Date(campaign.scheduled_start_at).toISOString().slice(0, 16) : "",
         })
         setEditing(true)
     }
@@ -202,7 +217,52 @@ export default function CampaignDetail() {
         }
     }
 
+    const handleDuplicate = async () => {
+        if (!id) return
+        try {
+            const result = await post<Campaign>(`/campaigns/${id}/duplicate`, {})
+            toast.success("Campaign duplicated")
+            navigate(`/campaigns/${result.id}`)
+        } catch (err) {
+            toast.error(parseApiError(err))
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        if (!id || selectedLeads.size === 0) return
+        setBulkDeleting(true)
+        try {
+            await post(`/campaigns/${id}/leads/bulk-delete`, { lead_ids: Array.from(selectedLeads) })
+            toast.success(`${selectedLeads.size} lead(s) deleted`)
+            setSelectedLeads(new Set())
+            fetchData()
+        } catch (err) {
+            toast.error(parseApiError(err))
+        } finally {
+            setBulkDeleting(false)
+        }
+    }
+
+    const toggleSelectLead = (leadId: string) => {
+        setSelectedLeads(prev => {
+            const next = new Set(prev)
+            if (next.has(leadId)) next.delete(leadId)
+            else next.add(leadId)
+            return next
+        })
+    }
+
+    const toggleSelectAll = () => {
+        if (selectedLeads.size === filteredLeads.length) {
+            setSelectedLeads(new Set())
+        } else {
+            setSelectedLeads(new Set(filteredLeads.map(l => l.id)))
+        }
+    }
+
     const canEdit = campaign?.status === "draft" || campaign?.status === "paused"
+    const leadsWithNotes = leads.filter(l => l.notes && l.notes.trim()).length
+    const notesPercentage = leads.length > 0 ? Math.round((leadsWithNotes / leads.length) * 100) : 0
 
     if (error) {
         const is404 = error.toLowerCase().includes("not found") || error.toLowerCase().includes("404")
@@ -291,6 +351,9 @@ export default function CampaignDetail() {
                                     <Eye size={14} /> Preview
                                 </Button>
                             )}
+                            <Button variant="outline" size="sm" onClick={handleDuplicate} className="gap-1.5">
+                                <Copy size={14} /> Duplicate
+                            </Button>
                             {canEdit && (
                                 <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
                                     <Pencil size={14} /> Edit
@@ -355,6 +418,70 @@ export default function CampaignDetail() {
                                 </span>
                             </p>
                         </div>
+                    </div>
+                )}
+
+                {/* ── Analytics + Lead Quality ──────────────────────── */}
+                {!loading && stats && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <MessageSquareReply size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Reply Rate</span>
+                            </div>
+                            <p className="text-2xl font-semibold">
+                                {stats.reply_rate}%
+                                <span className="text-sm font-normal text-muted-foreground ml-1">
+                                    ({stats.reply_count} / {stats.total_leads})
+                                </span>
+                            </p>
+                        </div>
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <Mail size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Avg Emails to Reply</span>
+                            </div>
+                            <p className="text-2xl font-semibold">
+                                {stats.avg_sequence_at_reply ? stats.avg_sequence_at_reply.toFixed(1) : "—"}
+                            </p>
+                        </div>
+                        <div className="bg-card border rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                <StickyNote size={13} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Lead Quality</span>
+                            </div>
+                            <p className="text-2xl font-semibold">
+                                {leadsWithNotes}
+                                <span className="text-sm font-normal text-muted-foreground">
+                                    {" / "}{leads.length} have notes
+                                </span>
+                            </p>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
+                                <div
+                                    className={`h-full rounded-full transition-all ${notesPercentage >= 50 ? "bg-emerald-500" : "bg-yellow-500"}`}
+                                    style={{ width: `${notesPercentage}%` }}
+                                />
+                            </div>
+                            {notesPercentage < 50 && leads.length > 0 && (
+                                <p className="text-[11px] text-yellow-600 mt-1.5">
+                                    Leads with notes get better personalization
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Scheduled Start ──────────────────────────────── */}
+                {!loading && campaign?.scheduled_start_at && campaign.status === "draft" && (
+                    <div className="bg-card border rounded-xl p-3 flex items-center gap-2 text-sm">
+                        <CalendarClock size={14} className="text-muted-foreground" />
+                        <span>Scheduled to start at </span>
+                        <span className="font-medium">
+                            {new Date(campaign.scheduled_start_at).toLocaleString(undefined, {
+                                month: "short", day: "numeric", year: "numeric",
+                                hour: "numeric", minute: "2-digit",
+                            })}
+                        </span>
                     </div>
                 )}
 
@@ -450,6 +577,11 @@ export default function CampaignDetail() {
                             <label className="text-[12px] font-medium text-muted-foreground">Goal</label>
                             <Textarea value={editForm.goal} onChange={e => setEditForm({ ...editForm, goal: e.target.value })} className="text-sm min-h-[80px] resize-none" />
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[12px] font-medium text-muted-foreground">Scheduled Start (optional)</label>
+                            <Input type="datetime-local" value={editForm.scheduled_start_at} onChange={e => setEditForm({ ...editForm, scheduled_start_at: e.target.value })} className="h-9 text-sm" />
+                            <p className="text-[11px] text-muted-foreground">Leave empty to start manually</p>
+                        </div>
                     </div>
                 )}
 
@@ -480,11 +612,26 @@ export default function CampaignDetail() {
                         </div>
                     )}
 
+                    {/* Bulk action bar */}
+                    {selectedLeads.size > 0 && (
+                        <div className="flex items-center gap-3 bg-card border rounded-xl px-4 py-2.5">
+                            <span className="text-sm font-medium">{selectedLeads.size} selected</span>
+                            <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleting} className="gap-1.5">
+                                <Trash2 size={13} />
+                                {bulkDeleting ? "Deleting..." : "Delete"}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())}>
+                                Clear
+                            </Button>
+                        </div>
+                    )}
+
                     {loading ? (
                         <div className="border rounded-xl overflow-hidden">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-10" />
                                         <TableHead>Name</TableHead>
                                         <TableHead>Email</TableHead>
                                         <TableHead>Company</TableHead>
@@ -495,6 +642,7 @@ export default function CampaignDetail() {
                                 <TableBody>
                                     {[1, 2, 3, 4, 5].map(i => (
                                         <TableRow key={i}>
+                                            <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-36" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -516,6 +664,14 @@ export default function CampaignDetail() {
                             <Table>
                                 <TableHeader className="sticky top-0 bg-card z-10">
                                     <TableRow>
+                                        <TableHead className="w-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedLeads.size === filteredLeads.length && filteredLeads.length > 0}
+                                                onChange={toggleSelectAll}
+                                                className="rounded border-input"
+                                            />
+                                        </TableHead>
                                         <TableHead>Name</TableHead>
                                         <TableHead>Email</TableHead>
                                         <TableHead>Company</TableHead>
@@ -532,6 +688,14 @@ export default function CampaignDetail() {
                                                 className="cursor-pointer group"
                                                 onClick={() => window.location.href = `/campaigns/${id}/leads/${lead.id}`}
                                             >
+                                                <TableCell onClick={e => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedLeads.has(lead.id)}
+                                                        onChange={() => toggleSelectLead(lead.id)}
+                                                        className="rounded border-input"
+                                                    />
+                                                </TableCell>
                                                 <TableCell>
                                                     <span className="inline-flex items-center gap-1.5 font-medium text-[13px] group-hover:text-primary transition-colors">
                                                         {lead.first_name} {lead.last_name}

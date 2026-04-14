@@ -38,6 +38,7 @@ export default function CreateCampaignModal({
         sender_name: "",
         goal: "",
         max_follow_ups: 3,
+        scheduled_start_at: "",
     })
 
     // Follow-up delay split into days, hours, minutes
@@ -165,7 +166,7 @@ export default function CreateCampaignModal({
                 ...form,
                 follow_up_delay_minutes: followUpDelayMinutes
             })
-            setForm({ name: "", sender_name: "", goal: "", max_follow_ups: 3 })
+            setForm({ name: "", sender_name: "", goal: "", max_follow_ups: 3, scheduled_start_at: "" })
             setDelayDays(2)
             setDelayHours(0)
             setDelayMinutes(0)
@@ -320,6 +321,19 @@ export default function CreateCampaignModal({
                         {fieldErrors.goal && (
                             <p className="text-xs text-destructive">{fieldErrors.goal}</p>
                         )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="scheduled_start_at">Schedule Start (optional)</Label>
+                        <Input
+                            id="scheduled_start_at"
+                            type="datetime-local"
+                            value={form.scheduled_start_at}
+                            onChange={(e) => setForm(prev => ({ ...prev, scheduled_start_at: e.target.value }))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Leave empty to start manually after adding leads.
+                        </p>
                     </div>
 
                     <DialogFooter>
