@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { get, post, patch } from "@/lib/api"
-import { formatTime } from "@/lib/utils"
 import { getCampaignStatus, getLeadStatus } from "@/lib/status"
 import { parseApiError } from "@/lib/errors"
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext"
@@ -19,35 +18,11 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-    Upload,
-    UserPlus,
-    Clock,
-    RefreshCw,
-    Users,
-    Search,
-    Play,
-    Pause,
-    Trash2,
-    ArrowUpRight,
-    Mail,
-    Gauge,
-    Target,
-    Eye,
-    Pencil,
-    Check,
-    X,
-    Copy,
-    CalendarClock,
-    MessageSquareReply,
-    StickyNote
+    Upload, UserPlus, Search, Play, Pause, Trash2,
+    ArrowUpRight, Eye, Pencil, Check, X, Copy, CalendarClock,
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
@@ -164,15 +139,9 @@ export default function CampaignDetail() {
         }
     }
 
-    useEffect(() => {
-        if (id) fetchData()
-    }, [id])
+    useEffect(() => { if (id) fetchData() }, [id])
 
-    const handleLeadsAdded = () => {
-        setShowAddLead(false)
-        setShowImportCSV(false)
-        fetchData()
-    }
+    const handleLeadsAdded = () => { setShowAddLead(false); setShowImportCSV(false); fetchData() }
 
     const handleToggleStatus = async () => {
         if (!id || !campaign || toggling) return
@@ -182,21 +151,15 @@ export default function CampaignDetail() {
             const result = await patch<Campaign>(`/campaigns/${id}/status?action=${action}`, {})
             setCampaign(result)
             toast.success(`Campaign ${action === "start" ? "started" : "paused"}`)
-        } catch (err) {
-            toast.error(parseApiError(err))
-        } finally {
-            setToggling(false)
-        }
+        } catch (err) { toast.error(parseApiError(err)) }
+        finally { setToggling(false) }
     }
 
     const startEditing = () => {
         if (!campaign) return
         setEditForm({
-            name: campaign.name,
-            sender_name: campaign.sender_name,
-            goal: campaign.goal || "",
-            follow_up_delay_minutes: campaign.follow_up_delay_minutes,
-            max_follow_ups: campaign.max_follow_ups,
+            name: campaign.name, sender_name: campaign.sender_name, goal: campaign.goal || "",
+            follow_up_delay_minutes: campaign.follow_up_delay_minutes, max_follow_ups: campaign.max_follow_ups,
             scheduled_start_at: campaign.scheduled_start_at ? new Date(campaign.scheduled_start_at).toISOString().slice(0, 16) : "",
         })
         setEditing(true)
@@ -207,25 +170,17 @@ export default function CampaignDetail() {
         setSaving(true)
         try {
             const result = await patch<Campaign>(`/campaigns/${id}`, editForm)
-            setCampaign(result)
-            setEditing(false)
-            toast.success("Campaign updated")
-        } catch (err) {
-            toast.error(parseApiError(err))
-        } finally {
-            setSaving(false)
-        }
+            setCampaign(result); setEditing(false); toast.success("Campaign updated")
+        } catch (err) { toast.error(parseApiError(err)) }
+        finally { setSaving(false) }
     }
 
     const handleDuplicate = async () => {
         if (!id) return
         try {
             const result = await post<Campaign>(`/campaigns/${id}/duplicate`, {})
-            toast.success("Campaign duplicated")
-            navigate(`/campaigns/${result.id}`)
-        } catch (err) {
-            toast.error(parseApiError(err))
-        }
+            toast.success("Campaign duplicated"); navigate(`/campaigns/${result.id}`)
+        } catch (err) { toast.error(parseApiError(err)) }
     }
 
     const handleBulkDelete = async () => {
@@ -233,335 +188,167 @@ export default function CampaignDetail() {
         setBulkDeleting(true)
         try {
             await post(`/campaigns/${id}/leads/bulk-delete`, { lead_ids: Array.from(selectedLeads) })
-            toast.success(`${selectedLeads.size} lead(s) deleted`)
-            setSelectedLeads(new Set())
-            fetchData()
-        } catch (err) {
-            toast.error(parseApiError(err))
-        } finally {
-            setBulkDeleting(false)
-        }
+            toast.success(`${selectedLeads.size} lead(s) deleted`); setSelectedLeads(new Set()); fetchData()
+        } catch (err) { toast.error(parseApiError(err)) }
+        finally { setBulkDeleting(false) }
     }
 
-    const toggleSelectLead = (leadId: string) => {
-        setSelectedLeads(prev => {
-            const next = new Set(prev)
-            if (next.has(leadId)) next.delete(leadId)
-            else next.add(leadId)
-            return next
-        })
+    const toggleSelectLead = (lid: string) => {
+        setSelectedLeads(prev => { const n = new Set(prev); n.has(lid) ? n.delete(lid) : n.add(lid); return n })
     }
-
     const toggleSelectAll = () => {
-        if (selectedLeads.size === filteredLeads.length) {
-            setSelectedLeads(new Set())
-        } else {
-            setSelectedLeads(new Set(filteredLeads.map(l => l.id)))
-        }
+        setSelectedLeads(selectedLeads.size === filteredLeads.length ? new Set() : new Set(filteredLeads.map(l => l.id)))
     }
 
     const canEdit = campaign?.status === "draft" || campaign?.status === "paused"
     const leadsWithNotes = leads.filter(l => l.notes && l.notes.trim()).length
-    const notesPercentage = leads.length > 0 ? Math.round((leadsWithNotes / leads.length) * 100) : 0
+    const notesPercent = leads.length > 0 ? Math.round((leadsWithNotes / leads.length) * 100) : 0
 
     if (error) {
         const is404 = error.toLowerCase().includes("not found") || error.toLowerCase().includes("404")
-        return (
-            <ErrorPage
-                title={is404 ? "Campaign Not Found" : "Something Went Wrong"}
-                message={error}
-                statusCode={is404 ? 404 : 500}
-            />
-        )
+        return <ErrorPage title={is404 ? "Campaign Not Found" : "Something Went Wrong"} message={error} statusCode={is404 ? 404 : 500} />
     }
 
     const canStart = (campaign?.status === "draft" || campaign?.status === "paused") && leads.length > 0
     const canStop = campaign?.status === "active"
     const showToggle = campaign?.status === "draft" || campaign?.status === "paused" || campaign?.status === "active"
     const isCompleted = campaign?.status === "completed"
-
     const hasLeads = stats ? stats.emails_target > 0 : false
-    const campaignProgress = hasLeads && stats
-        ? Math.min(100, Math.round((stats.emails_sent / stats.emails_target) * 100))
-        : 0
-    const rateLimitProgress = stats
-        ? Math.min(100, Math.round((stats.emails_in_window / stats.rate_limit) * 100))
-        : 0
+    const campaignProgress = hasLeads && stats ? Math.min(100, Math.round((stats.emails_sent / stats.emails_target) * 100)) : 0
+    const rateLimitProgress = stats ? Math.min(100, Math.round((stats.emails_in_window / stats.rate_limit) * 100)) : 0
     const isRateLimited = stats ? stats.rate_limit_remaining === 0 : false
 
     return (
         <div className="p-6">
-            <div className="space-y-6">
+            <div className="space-y-5">
 
-                {/* ── Header ───────────────────────────────────────── */}
+                {/* ── Header ──────────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div className="min-w-0 flex-1">
                         {loading ? (
-                            <>
-                                <Skeleton className="h-9 w-64 mb-2" />
-                                <Skeleton className="h-4 w-48" />
-                            </>
+                            <><Skeleton className="h-8 w-64 mb-2" /><Skeleton className="h-4 w-48" /></>
                         ) : (
                             <>
-                                <div className="flex items-center gap-3 mb-1">
-                                    <h1 className="text-2xl font-semibold tracking-tight truncate">
-                                        {campaign?.name}
-                                    </h1>
-                                    {campaign && (() => {
-                                        const s = getCampaignStatus(campaign.status)
-                                        return <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
-                                    })()}
+                                <div className="flex items-center gap-3 mb-0.5">
+                                    <h1 className="text-2xl font-semibold tracking-tight truncate">{campaign?.name}</h1>
+                                    {campaign && (() => { const s = getCampaignStatus(campaign.status); return <Badge variant={s.variant} className={s.className}>{s.label}</Badge> })()}
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                    {campaign?.sender_name} &middot; {campaign?.sender_email}
-                                </p>
+                                <p className="text-[13px] text-muted-foreground">{campaign?.sender_name} &middot; {campaign?.sender_email}</p>
                             </>
                         )}
                     </div>
-
                     {!loading && (
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                             {showToggle && (
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <span>
-                                                <Button
-                                                    variant={canStart ? "default" : "outline"}
-                                                    size="sm"
-                                                    onClick={handleToggleStatus}
-                                                    disabled={toggling || (!canStart && !canStop)}
-                                                    className="gap-1.5"
-                                                >
+                                                <Button variant={canStart ? "default" : "outline"} size="sm" onClick={handleToggleStatus} disabled={toggling || (!canStart && !canStop)} className="gap-1.5">
                                                     {canStop ? <Pause size={14} /> : <Play size={14} />}
-                                                    {canStop
-                                                        ? (toggling ? "Pausing..." : "Pause")
-                                                        : (toggling ? "Starting..." : "Start")}
+                                                    {canStop ? (toggling ? "Pausing..." : "Pause") : (toggling ? "Starting..." : "Start")}
                                                 </Button>
                                             </span>
                                         </TooltipTrigger>
-                                        {!canStart && !canStop && (
-                                            <TooltipContent>Add leads to start campaign</TooltipContent>
-                                        )}
+                                        {!canStart && !canStop && <TooltipContent>Add leads to start campaign</TooltipContent>}
                                     </Tooltip>
                                 </TooltipProvider>
                             )}
-                            {leads.length > 0 && (
-                                <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5">
-                                    <Eye size={14} /> Preview
-                                </Button>
-                            )}
-                            <Button variant="outline" size="sm" onClick={handleDuplicate} className="gap-1.5">
-                                <Copy size={14} /> Duplicate
-                            </Button>
-                            {canEdit && (
-                                <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
-                                    <Pencil size={14} /> Edit
-                                </Button>
-                            )}
+                            {leads.length > 0 && <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5"><Eye size={14} /> Preview</Button>}
+                            <Button variant="outline" size="sm" onClick={handleDuplicate} className="gap-1.5"><Copy size={14} /> Duplicate</Button>
+                            {canEdit && <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5"><Pencil size={14} /> Edit</Button>}
                             {!isCompleted && (
                                 <>
-                                    <Button variant="outline" size="sm" onClick={() => setShowImportCSV(true)} className="gap-1.5">
-                                        <Upload size={14} /> Import
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => setShowAddLead(true)} className="gap-1.5">
-                                        <UserPlus size={14} /> Add Lead
-                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => setShowImportCSV(true)} className="gap-1.5"><Upload size={14} /> Import</Button>
+                                    <Button variant="outline" size="sm" onClick={() => setShowAddLead(true)} className="gap-1.5"><UserPlus size={14} /> Add Lead</Button>
                                 </>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => setShowDelete(true)} className="text-muted-foreground hover:text-destructive">
-                                <Trash2 size={14} />
-                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setShowDelete(true)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></Button>
                         </div>
                     )}
                 </div>
 
-                {/* ── Overview Panel ─────────────────────────────────── */}
+                {/* ── Unified Overview Panel ──────────────────────────── */}
                 {loading ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {[1, 2, 3, 4].map(i => (
-                            <Skeleton key={i} className="h-20 rounded-xl" />
-                        ))}
-                    </div>
-                ) : campaign && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <Users size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Leads</span>
-                            </div>
-                            <p className="text-2xl font-semibold">{leads.length}</p>
+                    <Skeleton className="h-40 rounded-xl" />
+                ) : campaign && stats && (
+                    <div className="bg-card border rounded-xl overflow-hidden">
+                        {/* Stat row: single container, divided columns */}
+                        <div className="grid grid-cols-3 sm:grid-cols-6 divide-x">
+                            {[
+                                { label: "Leads", value: leads.length },
+                                { label: "Sent", value: <>{stats.emails_sent}<span className="text-xs font-normal text-muted-foreground">/{stats.emails_target}</span></> },
+                                { label: "Reply Rate", value: `${stats.reply_rate}%` },
+                                { label: "Avg to Reply", value: stats.avg_sequence_at_reply ? stats.avg_sequence_at_reply.toFixed(1) : "—" },
+                                { label: "Delay", value: formatDelay(campaign.follow_up_delay_minutes) },
+                                { label: "Follow-ups", value: campaign.max_follow_ups },
+                            ].map(s => (
+                                <div key={s.label} className="px-4 py-3">
+                                    <p className="text-[11px] text-muted-foreground mb-0.5">{s.label}</p>
+                                    <p className="text-lg font-semibold leading-tight">{s.value}</p>
+                                </div>
+                            ))}
                         </div>
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <Clock size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Follow-up Delay</span>
+
+                        {/* Progress bars */}
+                        <div className="border-t px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[11px] text-muted-foreground">
+                                    <span>Campaign Progress</span>
+                                    <span>{hasLeads ? `${campaignProgress}%` : "No leads"}</span>
+                                </div>
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${campaignProgress}%` }} />
+                                </div>
                             </div>
-                            <p className="text-2xl font-semibold">{formatDelay(campaign.follow_up_delay_minutes)}</p>
-                        </div>
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <RefreshCw size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Max Follow-ups</span>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[11px] text-muted-foreground">
+                                    <span>Sending Quota</span>
+                                    <span>{isCompleted ? "Done" : `${stats.emails_in_window}/${stats.rate_limit}`}</span>
+                                </div>
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all ${isCompleted ? "bg-muted-foreground/30" : isRateLimited ? "bg-red-500" : rateLimitProgress > 80 ? "bg-yellow-500" : "bg-emerald-500"}`} style={{ width: `${isCompleted ? 100 : rateLimitProgress}%` }} />
+                                </div>
                             </div>
-                            <p className="text-2xl font-semibold">{campaign.max_follow_ups}</p>
                         </div>
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <Mail size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Emails Sent</span>
+
+                        {/* Lead quality inline */}
+                        {leads.length > 0 && (
+                            <div className="border-t px-4 py-2 flex items-center gap-3 text-[11px]">
+                                <span className="text-muted-foreground">{leadsWithNotes}/{leads.length} leads have notes</span>
+                                <div className="h-1 bg-muted rounded-full flex-1 max-w-24 overflow-hidden">
+                                    <div className={`h-full rounded-full ${notesPercent >= 50 ? "bg-emerald-500" : "bg-yellow-500"}`} style={{ width: `${notesPercent}%` }} />
+                                </div>
+                                {notesPercent < 50 && <span className="text-yellow-600">Add notes for better personalization</span>}
                             </div>
-                            <p className="text-2xl font-semibold">
-                                {stats ? stats.emails_sent : 0}
-                                <span className="text-sm font-normal text-muted-foreground">
-                                    {stats ? ` / ${stats.emails_target}` : ""}
-                                </span>
-                            </p>
-                        </div>
+                        )}
                     </div>
                 )}
 
-                {/* ── Analytics + Lead Quality ──────────────────────── */}
-                {!loading && stats && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <MessageSquareReply size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Reply Rate</span>
-                            </div>
-                            <p className="text-2xl font-semibold">
-                                {stats.reply_rate}%
-                                <span className="text-sm font-normal text-muted-foreground ml-1">
-                                    ({stats.reply_count} / {stats.total_leads})
-                                </span>
-                            </p>
-                        </div>
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <Mail size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Emails Before Reply</span>
-                            </div>
-                            <p className="text-2xl font-semibold">
-                                {stats.avg_sequence_at_reply
-                                    ? <>
-                                        {stats.avg_sequence_at_reply.toFixed(1)}
-                                        {stats.reply_count < 3 && (
-                                            <span className="text-xs font-normal text-muted-foreground ml-1.5">
-                                                (small sample)
-                                            </span>
-                                        )}
-                                      </>
-                                    : "—"}
-                            </p>
-                        </div>
-                        <div className="bg-card border rounded-xl p-4">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                                <StickyNote size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Lead Quality</span>
-                            </div>
-                            <p className="text-2xl font-semibold">
-                                {leadsWithNotes}
-                                <span className="text-sm font-normal text-muted-foreground">
-                                    {" / "}{leads.length} have notes
-                                </span>
-                            </p>
-                            <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
-                                <div
-                                    className={`h-full rounded-full transition-all ${notesPercentage >= 50 ? "bg-emerald-500" : "bg-yellow-500"}`}
-                                    style={{ width: `${notesPercentage}%` }}
-                                />
-                            </div>
-                            {notesPercentage < 50 && leads.length > 0 && (
-                                <p className="text-[11px] text-yellow-600 mt-1.5">
-                                    Leads with notes get better personalization
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Scheduled Start ──────────────────────────────── */}
+                {/* ── Scheduled Start (subtle, no card) ───────────────── */}
                 {!loading && campaign?.scheduled_start_at && campaign.status === "draft" && (
-                    <div className="bg-card border rounded-xl p-3 flex items-center gap-2 text-sm">
-                        <CalendarClock size={14} className="text-muted-foreground" />
-                        <span>Scheduled to start at </span>
-                        <span className="font-medium">
-                            {new Date(campaign.scheduled_start_at).toLocaleString(undefined, {
-                                month: "short", day: "numeric", year: "numeric",
-                                hour: "numeric", minute: "2-digit",
-                            })}
-                        </span>
+                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                        <CalendarClock size={13} />
+                        <span>Scheduled to start <span className="text-foreground font-medium">{new Date(campaign.scheduled_start_at).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</span></span>
                     </div>
                 )}
 
-                {/* ── Progress Bars ─────────────────────────────────── */}
-                {!loading && stats && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-card border rounded-xl p-4 space-y-2">
-                            <div className="flex items-center justify-between text-[13px]">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Target size={13} />
-                                    <span className="font-medium">Campaign Progress</span>
-                                </div>
-                                <span className="text-muted-foreground">
-                                    {hasLeads ? `${campaignProgress}%` : "No leads"}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                    className="h-full rounded-full transition-all bg-emerald-500"
-                                    style={{ width: `${campaignProgress}%` }}
-                                />
-                            </div>
-                        </div>
-                        <div className="bg-card border rounded-xl p-4 space-y-2">
-                            <div className="flex items-center justify-between text-[13px]">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Gauge size={13} />
-                                    <span className="font-medium">Sending Quota</span>
-                                </div>
-                                <span className="text-muted-foreground">
-                                    {isCompleted
-                                        ? "Done"
-                                        : `${stats.emails_in_window} / ${stats.rate_limit}`}
-                                </span>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all ${
-                                        isCompleted ? "bg-muted-foreground/30"
-                                        : isRateLimited ? "bg-red-500"
-                                        : rateLimitProgress > 80 ? "bg-yellow-500"
-                                        : "bg-emerald-500"
-                                    }`}
-                                    style={{ width: `${isCompleted ? 100 : rateLimitProgress}%` }}
-                                />
-                            </div>
-                            {!isCompleted && isRateLimited && stats.rate_limit_resets_at && (
-                                <p className="text-[11px] text-red-500 font-medium">
-                                    Paused until {(() => {
-                                        const t = formatTime(stats.rate_limit_resets_at)
-                                        return t ? `${t.time} ${t.timezone}` : "soon"
-                                    })()}
-                                </p>
-                            )}
-                        </div>
+                {/* ── Goal (no card, just text) ───────────────────────── */}
+                {!loading && !editing && campaign?.goal && (
+                    <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1">Goal</p>
+                        <p className="text-[13px] leading-relaxed text-foreground/80">{campaign.goal}</p>
                     </div>
                 )}
 
-                {/* ── Edit Panel (inline) ────────────────────────────── */}
+                {/* ── Edit Panel ──────────────────────────────────────── */}
                 {editing && (
                     <div className="bg-card border rounded-xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-semibold">Edit Campaign</h2>
                             <div className="flex items-center gap-2">
-                                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="gap-1.5">
-                                    <Check size={14} />
-                                    {saving ? "Saving..." : "Save"}
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="gap-1.5">
-                                    <X size={14} /> Cancel
-                                </Button>
+                                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="gap-1.5"><Check size={14} />{saving ? "Saving..." : "Save"}</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="gap-1.5"><X size={14} /> Cancel</Button>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -594,77 +381,35 @@ export default function CampaignDetail() {
                     </div>
                 )}
 
-                {/* ── Goal (read-only when not editing) ─────────────── */}
-                {!loading && !editing && campaign?.goal && (
-                    <div className="bg-card border rounded-xl p-4">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Campaign Goal</p>
-                        <p className="text-[14px] leading-relaxed">{campaign.goal}</p>
-                    </div>
-                )}
-
-                {/* ── Leads Section ─────────────────────────────────── */}
+                {/* ── Leads Section ───────────────────────────────────── */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">Leads</h2>
+                        <h2 className="text-[15px] font-semibold">Leads</h2>
                         {!loading && <span className="text-[12px] text-muted-foreground">{filteredLeads.length} total</span>}
                     </div>
 
                     {!loading && (
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
-                            <Input
-                                placeholder="Search leads..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-9 text-sm"
-                            />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+                            <Input placeholder="Search leads..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-[13px]" />
                         </div>
                     )}
 
-                    {/* Bulk action bar */}
                     {selectedLeads.size > 0 && (
-                        <div className="flex items-center gap-3 bg-card border rounded-xl px-4 py-2.5">
-                            <span className="text-sm font-medium">{selectedLeads.size} selected</span>
-                            <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleting} className="gap-1.5">
-                                <Trash2 size={13} />
-                                {bulkDeleting ? "Deleting..." : "Delete"}
+                        <div className="flex items-center gap-3 bg-muted/50 border rounded-lg px-3 py-2">
+                            <span className="text-[13px] font-medium">{selectedLeads.size} selected</span>
+                            <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={bulkDeleting} className="gap-1.5 h-7 text-[12px]">
+                                <Trash2 size={12} />{bulkDeleting ? "Deleting..." : "Delete"}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())}>
-                                Clear
-                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())} className="h-7 text-[12px]">Clear</Button>
                         </div>
                     )}
 
                     {loading ? (
-                        <div className="border rounded-xl overflow-hidden">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-10" />
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Company</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Seq</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                        <TableRow key={i}>
-                                            <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-14" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-6" /></TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <Skeleton className="h-48 rounded-xl" />
                     ) : filteredLeads.length === 0 ? (
-                        <div className="text-center py-16 border border-dashed rounded-xl">
-                            <p className="text-muted-foreground text-sm">
+                        <div className="text-center py-12 border border-dashed rounded-xl">
+                            <p className="text-muted-foreground text-[13px]">
                                 {leads.length === 0 ? "No leads yet. Add leads manually or import from CSV." : "No leads match your search."}
                             </p>
                         </div>
@@ -674,50 +419,32 @@ export default function CampaignDetail() {
                                 <TableHeader className="sticky top-0 bg-card z-10">
                                     <TableRow>
                                         <TableHead className="w-10">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedLeads.size === filteredLeads.length && filteredLeads.length > 0}
-                                                onChange={toggleSelectAll}
-                                                className="rounded border-input"
-                                            />
+                                            <input type="checkbox" checked={selectedLeads.size === filteredLeads.length && filteredLeads.length > 0} onChange={toggleSelectAll} className="rounded border-input" />
                                         </TableHead>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Company</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Seq</TableHead>
+                                        <TableHead className="text-[12px]">Name</TableHead>
+                                        <TableHead className="text-[12px]">Email</TableHead>
+                                        <TableHead className="text-[12px]">Company</TableHead>
+                                        <TableHead className="text-[12px]">Status</TableHead>
+                                        <TableHead className="text-[12px]">Seq</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredLeads.map(lead => {
                                         const s = getLeadStatus(lead.status)
                                         return (
-                                            <TableRow
-                                                key={lead.id}
-                                                className="cursor-pointer group"
-                                                onClick={() => window.location.href = `/campaigns/${id}/leads/${lead.id}`}
-                                            >
+                                            <TableRow key={lead.id} className="cursor-pointer group" onClick={() => window.location.href = `/campaigns/${id}/leads/${lead.id}`}>
                                                 <TableCell onClick={e => e.stopPropagation()}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedLeads.has(lead.id)}
-                                                        onChange={() => toggleSelectLead(lead.id)}
-                                                        className="rounded border-input"
-                                                    />
+                                                    <input type="checkbox" checked={selectedLeads.has(lead.id)} onChange={() => toggleSelectLead(lead.id)} className="rounded border-input" />
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="inline-flex items-center gap-1.5 font-medium text-[13px] group-hover:text-primary transition-colors">
                                                         {lead.first_name} {lead.last_name}
-                                                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <ArrowUpRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-[13px] text-muted-foreground max-w-[200px]">
-                                                    <span className="truncate block" title={lead.email}>{lead.email}</span>
-                                                </TableCell>
+                                                <TableCell className="text-[13px] text-muted-foreground max-w-[200px]"><span className="truncate block" title={lead.email}>{lead.email}</span></TableCell>
                                                 <TableCell className="text-[13px]">{lead.company || "—"}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={s.variant} className={`${s.className} text-[11px]`}>{s.label}</Badge>
-                                                </TableCell>
+                                                <TableCell><Badge variant={s.variant} className={`${s.className} text-[10px]`}>{s.label}</Badge></TableCell>
                                                 <TableCell className="text-[13px] text-muted-foreground">{lead.current_sequence}</TableCell>
                                             </TableRow>
                                         )
@@ -728,7 +455,7 @@ export default function CampaignDetail() {
                     )}
                 </div>
 
-                {/* ── Modals ────────────────────────────────────────── */}
+                {/* ── Modals ──────────────────────────────────────────── */}
                 {id && (
                     <>
                         <AddLeadModal open={showAddLead} onClose={() => setShowAddLead(false)} onSuccess={handleLeadsAdded} campaignId={id} />
