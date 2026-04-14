@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(gh secret:*)",
+      "Bash(gh run:*)",
+      "Bash(wc -l /c/Ravi/LVG/outreach/ai-campaign-personalization/frontend/src/pages/*.tsx /c/Ravi/LVG/outreach/ai-campaign-personalization/frontend/src/components/*.tsx)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(npx shadcn@latest add badge breadcrumb avatar separator alert switch -y)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

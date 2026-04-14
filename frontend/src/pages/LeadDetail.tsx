@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams } from "react-router-dom"
 import { get, patch } from "@/lib/api"
 import { formatTime } from "@/lib/utils"
+import { getEmailStatus } from "@/lib/status"
+import { parseApiError } from "@/lib/errors"
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import {
-    ArrowLeft,
     Mail,
     Building2,
     Briefcase,
@@ -49,15 +53,6 @@ type EmailActivity = {
     created_at: string
 }
 
-function getStatusColor(status: string) {
-    switch (status) {
-        case "sent": return "bg-green-100 text-green-700"
-        case "pending": return "bg-yellow-100 text-yellow-700"
-        case "failed": return "bg-red-100 text-red-700"
-        case "received": return "bg-blue-100 text-blue-700"
-        default: return "bg-muted text-muted-foreground"
-    }
-}
 
 function getLeadStatusColor(status: string) {
     switch (status) {
@@ -241,9 +236,9 @@ function ActivityTimeline({
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(email.status)}`}>
-                                                            {email.status}
-                                                        </span>
+                                                        {(() => { const s = getEmailStatus(email.status); return (
+                                                            <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+                                                        ) })()}
                                                         <svg
                                                             className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                             fill="none"
@@ -354,6 +349,12 @@ export default function LeadDetail() {
     const [marking, setMarking] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
 
+    useBreadcrumbs([
+        { label: "Campaigns", href: "/" },
+        { label: lead?.campaign_name || "Campaign", href: campaignId ? `/campaigns/${campaignId}` : "/" },
+        { label: lead ? `${lead.first_name} ${lead.last_name}` : "Loading..." },
+    ])
+
     const fetchData = async () => {
         if (!leadId || !campaignId) return
 
@@ -368,7 +369,7 @@ export default function LeadDetail() {
             setActivity(activityData)
             setError(null)
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to fetch lead data")
+            setError(parseApiError(err))
         } finally {
             setLoading(false)
         }
@@ -395,17 +396,7 @@ export default function LeadDetail() {
             setLead({ ...lead, notes: previousNotes })
             setNotes(previousNotes || "")
 
-            // Parse error message properly
-            let errorMessage = "Failed to save notes"
-            if (err instanceof Error) {
-                try {
-                    const errorObj = JSON.parse(err.message)
-                    errorMessage = errorObj.detail || err.message
-                } catch {
-                    errorMessage = err.message
-                }
-            }
-            toast.error(errorMessage)
+            toast.error(parseApiError(err))
         } finally {
             setSaving(false)
         }
@@ -428,17 +419,7 @@ export default function LeadDetail() {
             // Revert on error
             setLead({ ...lead, has_replied: previousReplied, status: previousStatus })
 
-            // Parse error message properly
-            let errorMessage = "Failed to mark as replied"
-            if (err instanceof Error) {
-                try {
-                    const errorObj = JSON.parse(err.message)
-                    errorMessage = errorObj.detail || err.message
-                } catch {
-                    errorMessage = err.message
-                }
-            }
-            toast.error(errorMessage)
+            toast.error(parseApiError(err))
         } finally {
             setMarking(false)
         }
@@ -446,9 +427,12 @@ export default function LeadDetail() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background p-8">
+            <div className="p-8">
                 <div className="max-w-4xl mx-auto">
-                    <div className="text-destructive bg-destructive/10 p-4 rounded-lg">{error}</div>
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
                 </div>
             </div>
         )
@@ -459,13 +443,7 @@ export default function LeadDetail() {
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* Header with back link and delete button */}
                 <div className="flex justify-between items-center">
-                    <Link
-                        to={`/campaigns/${campaignId}`}
-                        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft size={16} />
-                        Back to {loading ? "Campaign" : lead?.campaign_name}
-                    </Link>
+                    <div />
                     {loading ? (
                         <Skeleton className="h-10 w-10" />
                     ) : lead && (

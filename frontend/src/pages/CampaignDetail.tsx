@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams } from "react-router-dom"
 import { get, patch } from "@/lib/api"
 import { formatTime } from "@/lib/utils"
+import { getCampaignStatus, getLeadStatus } from "@/lib/status"
+import { parseApiError } from "@/lib/errors"
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext"
 import { toast } from "sonner"
 import ErrorPage from "./ErrorPage"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,7 +28,6 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import {
-    ArrowLeft,
     Upload,
     UserPlus,
     Clock,
@@ -76,15 +79,6 @@ type Lead = {
     current_sequence: number
 }
 
-function getStatusColor(status: string) {
-    switch (status) {
-        case "active": return "bg-green-100 text-green-700"
-        case "replied": return "bg-blue-100 text-blue-700"
-        case "completed": return "bg-gray-100 text-gray-700"
-        case "failed": return "bg-red-100 text-red-700"
-        default: return "bg-yellow-100 text-yellow-700"
-    }
-}
 
 function LeadsTableSkeleton() {
     return (
@@ -237,14 +231,6 @@ function formatDelay(minutes: number): string {
     return parts.join(" ")
 }
 
-function getCampaignStatusColor(status: string) {
-    switch (status) {
-        case "active": return "bg-green-100 text-green-700"
-        case "paused": return "bg-yellow-100 text-yellow-700"
-        case "completed": return "bg-blue-100 text-blue-700"
-        default: return "bg-muted text-muted-foreground"
-    }
-}
 
 function CampaignProgressCard({
     stats,
@@ -387,9 +373,9 @@ function CampaignInfoCard({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Status</p>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getCampaignStatusColor(campaign.status)}`}>
-                            {campaign.status}
-                        </span>
+                        {(() => { const s = getCampaignStatus(campaign.status); return (
+                            <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+                        ) })()}
                     </div>
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-1">Leads</p>
@@ -456,9 +442,9 @@ function LeadsTable({ leads, campaignId }: { leads: Lead[], campaignId: string }
                         <TableCell>{lead.company || "—"}</TableCell>
                         <TableCell>{lead.title || "—"}</TableCell>
                         <TableCell>
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(lead.status)}`}>
-                                {lead.status}
-                            </span>
+                            {(() => { const s = getLeadStatus(lead.status); return (
+                                <Badge variant={s.variant} className={s.className}>{s.label}</Badge>
+                            ) })()}
                         </TableCell>
                         <TableCell>{lead.current_sequence}</TableCell>
                     </TableRow>
@@ -489,6 +475,11 @@ export default function CampaignDetail() {
     const [toggling, setToggling] = useState(false)
     const [showDelete, setShowDelete] = useState(false)
 
+    useBreadcrumbs([
+        { label: "Campaigns", href: "/" },
+        { label: campaign?.name || "Loading..." },
+    ])
+
     const filteredLeads = useMemo(() => {
         if (!searchQuery.trim()) return leads
         const query = searchQuery.toLowerCase()
@@ -517,17 +508,7 @@ export default function CampaignDetail() {
             setStats(statsData)
             setError(null)
         } catch (err) {
-            // Parse error message properly
-            let errorMessage = "Failed to fetch data"
-            if (err instanceof Error) {
-                try {
-                    const errorObj = JSON.parse(err.message)
-                    errorMessage = errorObj.detail || err.message
-                } catch {
-                    errorMessage = err.message
-                }
-            }
-            setError(errorMessage)
+            setError(parseApiError(err))
         } finally {
             setLoading(false)
         }
@@ -556,17 +537,7 @@ export default function CampaignDetail() {
             setCampaign(result)
             toast.success(`Campaign ${action === "start" ? "started" : "paused"} successfully`)
         } catch (err) {
-            // Parse error message properly
-            let errorMessage = "Failed to update campaign status"
-            if (err instanceof Error) {
-                try {
-                    const errorObj = JSON.parse(err.message)
-                    errorMessage = errorObj.detail || err.message
-                } catch {
-                    errorMessage = err.message
-                }
-            }
-            toast.error(errorMessage)
+            toast.error(parseApiError(err))
         } finally {
             setToggling(false)
         }
@@ -587,12 +558,6 @@ export default function CampaignDetail() {
     return (
         <div className="min-h-screen bg-background p-8 flex flex-col">
             <div className="max-w-6xl mx-auto w-full flex flex-col flex-1">
-                {/* Back link */}
-                <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 flex-shrink-0">
-                    <ArrowLeft size={16} />
-                    Back to Campaigns
-                </Link>
-
                 {/* Header */}
                 <div className="flex-shrink-0">
                     <CampaignDetailsHeader

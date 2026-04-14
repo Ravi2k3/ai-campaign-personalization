@@ -1,8 +1,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { get } from "@/lib/api"
+import { getCampaignStatus } from "@/lib/status"
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
     Card,
     CardContent,
@@ -11,9 +15,8 @@ import {
     CardTitle
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Search, Mail, Users } from "lucide-react"
+import { Plus, Search, Mail, Users, AlertCircle } from "lucide-react"
 import CreateCampaignModal from "@/components/CreateCampaignModal"
-import UserMenu from "@/components/UserMenu"
 
 type Campaign = {
     id: string
@@ -26,62 +29,18 @@ type Campaign = {
     created_at: string
 }
 
-function getStatusColor(status: string) {
-    switch (status) {
-        case "active": return "bg-green-100 text-green-700"
-        case "paused": return "bg-yellow-100 text-yellow-700"
-        case "completed": return "bg-blue-100 text-blue-700"
-        default: return "bg-muted text-muted-foreground"
-    }
-}
-
-function CampaignHeader({
-    setShowModal,
-    searchQuery,
-    setSearchQuery
-}: {
-    setShowModal: (show: boolean) => void
-    searchQuery: string
-    setSearchQuery: (query: string) => void
-}) {
-    return (
-        <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-                <div>
-                    <h1 className="text-3xl font-bold">Campaigns</h1>
-                    <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button onClick={() => setShowModal(true)} className="gap-2 flex-1 sm:flex-none">
-                        <Plus size={18} />
-                        Create Campaign
-                    </Button>
-                    <UserMenu />
-                </div>
-            </div>
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                <Input
-                    placeholder="Search by name, goal, sender, or status..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                />
-            </div>
-        </div>
-    )
-}
-
 function CampaignCard({ campaign }: { campaign: Campaign }) {
+    const status = getCampaignStatus(campaign.status)
+
     return (
         <Link to={`/campaigns/${campaign.id}`}>
             <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
                 <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(campaign.status)}`}>
-                            {campaign.status}
-                        </span>
+                        <Badge variant={status.variant} className={status.className}>
+                            {status.label}
+                        </Badge>
                     </div>
                     <CardDescription className="line-clamp-2">
                         {campaign.goal || "No goal specified"}
@@ -175,6 +134,8 @@ export default function Campaigns() {
     const [showModal, setShowModal] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
 
+    useBreadcrumbs([{ label: "Campaigns" }])
+
     const fetchCampaigns = async () => {
         try {
             setLoading(true)
@@ -210,21 +171,38 @@ export default function Campaigns() {
     }
 
     return (
-        <div className="h-screen bg-background flex flex-col">
-            <div className="sticky top-0 z-10 bg-background px-8 pt-8 pb-4 border-b">
-                <div className="max-w-6xl mx-auto">
-                    <CampaignHeader
-                        setShowModal={setShowModal}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                    />
+        <div className="flex flex-col h-full">
+            <div className="sticky top-0 z-10 bg-background px-8 pt-6 pb-4">
+                <div className="max-w-6xl mx-auto space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                        <div>
+                            <h1 className="text-3xl font-bold">Campaigns</h1>
+                            <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
+                        </div>
+                        <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto">
+                            <Plus size={18} />
+                            Create Campaign
+                        </Button>
+                    </div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                        <Input
+                            placeholder="Search by name, goal, sender, or status..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-8 py-6">
                 <div className="max-w-6xl mx-auto">
                     {error ? (
-                        <div className="text-destructive bg-destructive/10 p-4 rounded-lg">{error}</div>
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     ) : (
                         <CampaignContent
                             campaigns={filteredCampaigns}
