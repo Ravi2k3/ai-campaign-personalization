@@ -148,7 +148,7 @@ export default function LeadDetail() {
     if (error) {
         return (
             <div className="p-6">
-                <div className="max-w-4xl">
+                <div className="w-full">
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{error}</AlertDescription>
@@ -163,7 +163,7 @@ export default function LeadDetail() {
 
     return (
         <div className="p-6">
-            <div className="max-w-4xl space-y-6">
+            <div className="w-full space-y-6">
 
                 {/* ── Header ───────────────────────────────────────── */}
                 <div className="flex items-start justify-between">
