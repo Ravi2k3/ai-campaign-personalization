@@ -242,6 +242,26 @@ async def update_lead(
     updates: list[str] = []
     params: list[Any] = []
 
+    if update.email is not None:
+        updates.append("email = %s")
+        params.append(update.email)
+
+    if update.first_name is not None:
+        updates.append("first_name = %s")
+        params.append(update.first_name)
+
+    if update.last_name is not None:
+        updates.append("last_name = %s")
+        params.append(update.last_name)
+
+    if update.company is not None:
+        updates.append("company = %s")
+        params.append(update.company)
+
+    if update.title is not None:
+        updates.append("title = %s")
+        params.append(update.title)
+
     if update.notes is not None:
         updates.append("notes = %s")
         params.append(update.notes)

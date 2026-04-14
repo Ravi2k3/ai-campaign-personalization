@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
     Tooltip,
     TooltipContent,
@@ -38,11 +39,16 @@ import {
     ArrowUpRight,
     Mail,
     Gauge,
-    Target
+    Target,
+    Eye,
+    Pencil,
+    Check,
+    X
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
 import DeleteCampaignModal from "@/components/DeleteCampaignModal"
+import PreviewEmailModal from "@/components/PreviewEmailModal"
 
 type Campaign = {
     id: string
@@ -101,6 +107,10 @@ export default function CampaignDetail() {
     const [searchQuery, setSearchQuery] = useState("")
     const [toggling, setToggling] = useState(false)
     const [showDelete, setShowDelete] = useState(false)
+    const [showPreview, setShowPreview] = useState(false)
+    const [editing, setEditing] = useState(false)
+    const [editForm, setEditForm] = useState({ name: "", sender_name: "", goal: "", follow_up_delay_minutes: 0, max_follow_ups: 0 })
+    const [saving, setSaving] = useState(false)
 
     useBreadcrumbs([
         { label: "Campaigns", href: "/" },
@@ -164,6 +174,35 @@ export default function CampaignDetail() {
             setToggling(false)
         }
     }
+
+    const startEditing = () => {
+        if (!campaign) return
+        setEditForm({
+            name: campaign.name,
+            sender_name: campaign.sender_name,
+            goal: campaign.goal || "",
+            follow_up_delay_minutes: campaign.follow_up_delay_minutes,
+            max_follow_ups: campaign.max_follow_ups,
+        })
+        setEditing(true)
+    }
+
+    const handleSaveEdit = async () => {
+        if (!id) return
+        setSaving(true)
+        try {
+            const result = await patch<Campaign>(`/campaigns/${id}`, editForm)
+            setCampaign(result)
+            setEditing(false)
+            toast.success("Campaign updated")
+        } catch (err) {
+            toast.error(parseApiError(err))
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const canEdit = campaign?.status === "draft" || campaign?.status === "paused"
 
     if (error) {
         const is404 = error.toLowerCase().includes("not found") || error.toLowerCase().includes("404")
@@ -246,6 +285,16 @@ export default function CampaignDetail() {
                                         )}
                                     </Tooltip>
                                 </TooltipProvider>
+                            )}
+                            {leads.length > 0 && (
+                                <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5">
+                                    <Eye size={14} /> Preview
+                                </Button>
+                            )}
+                            {canEdit && (
+                                <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
+                                    <Pencil size={14} /> Edit
+                                </Button>
                             )}
                             {!isCompleted && (
                                 <>
@@ -364,8 +413,48 @@ export default function CampaignDetail() {
                     </div>
                 )}
 
-                {/* ── Goal ──────────────────────────────────────────── */}
-                {!loading && campaign?.goal && (
+                {/* ── Edit Panel (inline) ────────────────────────────── */}
+                {editing && (
+                    <div className="bg-card border rounded-xl p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">Edit Campaign</h2>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="gap-1.5">
+                                    <Check size={14} />
+                                    {saving ? "Saving..." : "Save"}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="gap-1.5">
+                                    <X size={14} /> Cancel
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Name</label>
+                                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Sender Name</label>
+                                <Input value={editForm.sender_name} onChange={e => setEditForm({ ...editForm, sender_name: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Follow-up Delay (minutes)</label>
+                                <Input type="number" value={editForm.follow_up_delay_minutes} onChange={e => setEditForm({ ...editForm, follow_up_delay_minutes: parseInt(e.target.value) || 0 })} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Max Follow-ups</label>
+                                <Input type="number" value={editForm.max_follow_ups} onChange={e => setEditForm({ ...editForm, max_follow_ups: parseInt(e.target.value) || 0 })} className="h-9 text-sm" />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[12px] font-medium text-muted-foreground">Goal</label>
+                            <Textarea value={editForm.goal} onChange={e => setEditForm({ ...editForm, goal: e.target.value })} className="text-sm min-h-[80px] resize-none" />
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Goal (read-only when not editing) ─────────────── */}
+                {!loading && !editing && campaign?.goal && (
                     <div className="bg-card border rounded-xl p-4">
                         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Campaign Goal</p>
                         <p className="text-[14px] leading-relaxed">{campaign.goal}</p>
@@ -472,6 +561,7 @@ export default function CampaignDetail() {
                         <AddLeadModal open={showAddLead} onClose={() => setShowAddLead(false)} onSuccess={handleLeadsAdded} campaignId={id} />
                         <ImportCSVModal open={showImportCSV} onClose={() => setShowImportCSV(false)} onSuccess={handleLeadsAdded} campaignId={id} />
                         <DeleteCampaignModal open={showDelete} onClose={() => setShowDelete(false)} campaignId={id} campaignName={campaign?.name || ""} />
+                        <PreviewEmailModal open={showPreview} onClose={() => setShowPreview(false)} campaignId={id} leads={leads} />
                     </>
                 )}
             </div>

@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -21,7 +22,10 @@ import {
     Trash2,
     Reply,
     Hash,
-    CalendarClock
+    CalendarClock,
+    Pencil,
+    Check,
+    X
 } from "lucide-react"
 import DeleteLeadModal from "@/components/DeleteLeadModal"
 
@@ -72,6 +76,9 @@ export default function LeadDetail() {
     const [marking, setMarking] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+    const [editingLead, setEditingLead] = useState(false)
+    const [leadForm, setLeadForm] = useState({ email: "", first_name: "", last_name: "", company: "", title: "" })
+    const [savingLead, setSavingLead] = useState(false)
 
     useBreadcrumbs([
         { label: "Campaigns", href: "/" },
@@ -145,6 +152,33 @@ export default function LeadDetail() {
         })
     }
 
+    const startEditingLead = () => {
+        if (!lead) return
+        setLeadForm({
+            email: lead.email,
+            first_name: lead.first_name,
+            last_name: lead.last_name,
+            company: lead.company || "",
+            title: lead.title || "",
+        })
+        setEditingLead(true)
+    }
+
+    const handleSaveLead = async () => {
+        if (!leadId) return
+        setSavingLead(true)
+        try {
+            await patch(`/leads/${leadId}`, leadForm)
+            await fetchData()
+            setEditingLead(false)
+            toast.success("Lead updated")
+        } catch (err) {
+            toast.error(parseApiError(err))
+        } finally {
+            setSavingLead(false)
+        }
+    }
+
     if (error) {
         return (
             <div className="p-6">
@@ -192,11 +226,55 @@ export default function LeadDetail() {
                         )}
                     </div>
                     {!loading && lead && (
-                        <Button variant="ghost" size="icon" onClick={() => setShowDeleteModal(true)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 size={14} />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                            <Button variant="outline" size="sm" onClick={startEditingLead} className="gap-1.5">
+                                <Pencil size={13} /> Edit
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setShowDeleteModal(true)} className="text-muted-foreground hover:text-destructive">
+                                <Trash2 size={14} />
+                            </Button>
+                        </div>
                     )}
                 </div>
+
+                {/* ── Edit Panel ────────────────────────────────────── */}
+                {editingLead && (
+                    <div className="bg-card border rounded-xl p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">Edit Lead</h2>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" onClick={handleSaveLead} disabled={savingLead} className="gap-1.5">
+                                    <Check size={14} /> {savingLead ? "Saving..." : "Save"}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingLead(false)} className="gap-1.5">
+                                    <X size={14} /> Cancel
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">First Name</label>
+                                <Input value={leadForm.first_name} onChange={e => setLeadForm({ ...leadForm, first_name: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Last Name</label>
+                                <Input value={leadForm.last_name} onChange={e => setLeadForm({ ...leadForm, last_name: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Email</label>
+                                <Input value={leadForm.email} onChange={e => setLeadForm({ ...leadForm, email: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Company</label>
+                                <Input value={leadForm.company} onChange={e => setLeadForm({ ...leadForm, company: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                            <div className="sm:col-span-2 space-y-1.5">
+                                <label className="text-[12px] font-medium text-muted-foreground">Title</label>
+                                <Input value={leadForm.title} onChange={e => setLeadForm({ ...leadForm, title: e.target.value })} className="h-9 text-sm" />
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* ── Info Grid ─────────────────────────────────────── */}
                 {loading ? (

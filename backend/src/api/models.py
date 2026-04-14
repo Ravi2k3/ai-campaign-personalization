@@ -50,10 +50,28 @@ class LeadResponse(BaseModel):
     current_sequence: int
     created_at: datetime
 
+class CampaignUpdate(BaseModel):
+    name: Optional[str] = None
+    sender_name: Optional[str] = None
+    goal: Optional[str] = None
+    follow_up_delay_minutes: Optional[int] = None
+    max_follow_ups: Optional[int] = None
+
+
 class LeadUpdate(BaseModel):
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    company: Optional[str] = None
+    title: Optional[str] = None
     notes: Optional[str] = None
     has_replied: Optional[bool] = None
     status: Optional[str] = None
+
+
+class EmailPreviewResponse(BaseModel):
+    subject: str
+    body: str
 
 class LeadDetailResponse(LeadResponse):
     # Extended lead response with campaign context

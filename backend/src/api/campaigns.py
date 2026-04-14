@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ..auth import get_current_user
 from ..db import get_cursor
 from ..scheduler.job import CAMPAIGN_EMAIL_RATE_LIMIT, RATE_LIMIT_WINDOW_MINUTES
-from .models import CampaignCreate, CampaignResponse
+from .models import CampaignCreate, CampaignUpdate, CampaignResponse, EmailPreviewResponse
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -90,6 +90,135 @@ async def delete_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     return {"message": "Campaign deleted"}
+
+
+@router.patch("/{campaign_id}", response_model=CampaignResponse)
+async def update_campaign(
+    campaign_id: str,
+    update: CampaignUpdate,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Update campaign fields. Only allowed when campaign is in draft or paused status."""
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "SELECT status FROM campaigns WHERE id = %s AND user_id = %s",
+            (campaign_id, user["id"]),
+        )
+        campaign = cur.fetchone()
+
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        if campaign["status"] not in ("draft", "paused"):
+            raise HTTPException(
+                status_code=400,
+                detail="Can only edit campaigns in draft or paused status",
+            )
+
+        updates: list[str] = []
+        params: list[Any] = []
+
+        if update.name is not None:
+            updates.append("name = %s")
+            params.append(update.name)
+        if update.sender_name is not None:
+            updates.append("sender_name = %s")
+            params.append(update.sender_name)
+        if update.goal is not None:
+            updates.append("goal = %s")
+            params.append(update.goal)
+        if update.follow_up_delay_minutes is not None:
+            updates.append("follow_up_delay_minutes = %s")
+            params.append(update.follow_up_delay_minutes)
+        if update.max_follow_ups is not None:
+            updates.append("max_follow_ups = %s")
+            params.append(update.max_follow_ups)
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        updates.append("updated_at = NOW()")
+        params.extend([campaign_id, user["id"]])
+
+        cur.execute(
+            f"""
+            UPDATE campaigns
+            SET {', '.join(updates)}
+            WHERE id = %s AND user_id = %s
+            RETURNING {_CAMPAIGN_COLS}
+            """,
+            params,
+        )
+        updated = cur.fetchone()
+
+    return updated
+
+
+@router.post("/{campaign_id}/preview", response_model=EmailPreviewResponse)
+async def preview_email(
+    campaign_id: str,
+    lead_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Generate a preview email for a specific lead without sending it."""
+    with get_cursor() as cur:
+        cur.execute(
+            f"SELECT {_CAMPAIGN_COLS} FROM campaigns WHERE id = %s AND user_id = %s",
+            (campaign_id, user["id"]),
+        )
+        campaign = cur.fetchone()
+
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        cur.execute(
+            """
+            SELECT id, email, first_name, last_name, company, title, notes, current_sequence
+            FROM leads WHERE id = %s AND campaign_id = %s
+            """,
+            (lead_id, campaign_id),
+        )
+        lead = cur.fetchone()
+
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead not found in this campaign")
+
+        # Fetch previous emails for context
+        cur.execute(
+            """
+            SELECT sequence_number, subject, body, sent_at
+            FROM emails WHERE lead_id = %s AND status = 'sent'
+            ORDER BY sequence_number ASC LIMIT 5
+            """,
+            (lead_id,),
+        )
+        previous_emails = cur.fetchall()
+
+    from ..mail.agent import generate_mail
+
+    user_info = {
+        "email": lead["email"],
+        "first_name": lead["first_name"],
+        "last_name": lead["last_name"],
+        "company": lead["company"],
+        "title": lead["title"],
+        "notes": lead["notes"],
+    }
+
+    campaign_info = {
+        "name": campaign["name"],
+        "goal": campaign["goal"],
+        "sender_name": campaign["sender_name"],
+        "sender_email": campaign["sender_email"],
+        "current_sequence": lead["current_sequence"] + 1,
+        "max_follow_ups": campaign["max_follow_ups"],
+    }
+
+    try:
+        result = await generate_mail(user_info, campaign_info, list(previous_emails))
+        return EmailPreviewResponse(subject=result.subject, body=result.body)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate preview: {str(e)}")
 
 
 @router.patch("/{campaign_id}/status", response_model=CampaignResponse)
