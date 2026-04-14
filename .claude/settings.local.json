@@ -10,7 +10,13 @@
       "Bash(npm run:*)",
       "mcp__Claude_Preview__preview_start",
       "Bash(npx shadcn@latest add sidebar -y)",
-      "Bash(npx shadcn@latest add sidebar --overwrite)"
+      "Bash(npx shadcn@latest add sidebar --overwrite)",
+      "Bash(npx shadcn@latest diff)",
+      "Bash(npx shadcn@latest init -d --style mira --base-color neutral --css-variables true)",
+      "Bash(npx shadcn@latest init --help)",
+      "Bash(npx shadcn@latest init --preset)",
+      "Bash(npx shadcn@latest init --preset radix-mira -f --reinstall)",
+      "Bash(npx shadcn@latest init --preset mira -f --reinstall)"
     ]
   }
 }

@@ -439,10 +439,19 @@ export default function CampaignDetail() {
                         <div className="bg-card border rounded-xl p-4">
                             <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                 <Mail size={13} />
-                                <span className="text-[11px] font-medium uppercase tracking-wide">Avg Emails to Reply</span>
+                                <span className="text-[11px] font-medium uppercase tracking-wide">Emails Before Reply</span>
                             </div>
                             <p className="text-2xl font-semibold">
-                                {stats.avg_sequence_at_reply ? stats.avg_sequence_at_reply.toFixed(1) : "—"}
+                                {stats.avg_sequence_at_reply
+                                    ? <>
+                                        {stats.avg_sequence_at_reply.toFixed(1)}
+                                        {stats.reply_count < 3 && (
+                                            <span className="text-xs font-normal text-muted-foreground ml-1.5">
+                                                (small sample)
+                                            </span>
+                                        )}
+                                      </>
+                                    : "—"}
                             </p>
                         </div>
                         <div className="bg-card border rounded-xl p-4">
