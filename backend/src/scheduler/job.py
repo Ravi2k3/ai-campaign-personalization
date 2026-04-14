@@ -493,11 +493,56 @@ async def generate_email_for_lead(
 # ── Main Job: Process Leads ─────────────────────────────────────────────────
 
 
+async def _inline_reply_check() -> None:
+    """
+    Quick reply check that runs at the start of every send job.
+    Prevents sending follow-ups to leads who just replied but haven't
+    been caught by the periodic reply-check job yet.
+    """
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT u.id as user_id, u.email as user_email
+            FROM users u
+            JOIN campaigns c ON c.user_id = u.id
+            JOIN leads l ON l.campaign_id = c.id
+            WHERE c.status = 'active'
+              AND l.has_replied = false
+              AND l.status NOT IN ('replied', 'failed')
+              AND u.refresh_token_encrypted IS NOT NULL
+            """
+        )
+        users = cur.fetchall()
+
+    if not users:
+        return
+
+    for user in users:
+        uid = str(user["user_id"])
+        user_email = user["user_email"]
+
+        try:
+            replies = await run_sync(check_replies_for_user, uid, user_email)
+            for reply in replies:
+                reply_body = extract_reply_text(reply.get("body", ""))
+                mark_lead_replied(
+                    lead_id=reply["lead_id"],
+                    subject=reply.get("subject", ""),
+                    reply_content=reply_body or "(Reply content unavailable)",
+                    gmail_message_id=reply.get("gmail_message_id"),
+                )
+            if replies:
+                logger.info(f"[CRON] Pre-send reply check found {len(replies)} replies for user {uid}")
+        except Exception as e:
+            logger.warning(f"[CRON] Pre-send reply check failed for user {uid}: {e}")
+
+
 async def process_leads_job() -> None:
     """
     Main email processing job.
 
     Flow:
+    0. Check for replies FIRST (prevents sending to leads who just replied)
     1. Fetch eligible leads (with user context)
     2. Check per-user daily Gmail limits
     3. Lock leads
@@ -509,6 +554,14 @@ async def process_leads_job() -> None:
     9. Check campaign completion
     """
     try:
+        # Step 0: Check for replies before sending anything.
+        # This prevents the race condition where a lead replies between
+        # reply-check intervals but the send job picks them up first.
+        try:
+            await _inline_reply_check()
+        except Exception as e:
+            logger.warning(f"[CRON] Inline reply check failed (proceeding with send): {e}")
+
         # Step 1: Fetch eligible leads
         leads = await run_sync(_get_eligible_leads)
         if not leads:
