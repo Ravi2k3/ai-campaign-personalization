@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -43,14 +43,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
-app.include_router(auth_router)
-app.include_router(campaigns_router)
-app.include_router(leads_router)
-app.include_router(leads_detail_router)
+# All API routes live under /api so Caddy can reverse-proxy them
+# while serving the frontend static files on everything else.
+api_router = APIRouter(prefix="/api")
+api_router.include_router(auth_router)
+api_router.include_router(campaigns_router)
+api_router.include_router(leads_router)
+api_router.include_router(leads_detail_router)
 
 
-@app.get("/health")
+@api_router.get("/health")
 async def health_check():
     db_connected = test_connection()
     return {
@@ -59,6 +61,9 @@ async def health_check():
     }
 
 
-@app.get("/")
+@api_router.get("/")
 async def root():
     return {"message": "AI Mail Personalization API", "version": "2.0.0"}
+
+
+app.include_router(api_router)
