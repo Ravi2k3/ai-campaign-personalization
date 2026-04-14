@@ -227,9 +227,11 @@ export default function LeadDetail() {
                     </div>
                     {!loading && lead && (
                         <div className="flex items-center gap-1">
-                            <Button variant="outline" size="sm" onClick={startEditingLead} className="gap-1.5">
-                                <Pencil size={13} /> Edit
-                            </Button>
+                            {!isTerminal && (
+                                <Button variant="outline" size="sm" onClick={startEditingLead} className="gap-1.5">
+                                    <Pencil size={13} /> Edit
+                                </Button>
+                            )}
                             <Button variant="ghost" size="icon" onClick={() => setShowDeleteModal(true)} className="text-muted-foreground hover:text-destructive">
                                 <Trash2 size={14} />
                             </Button>
