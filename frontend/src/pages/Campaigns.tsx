@@ -7,15 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle
-} from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Search, Mail, Users, AlertCircle } from "lucide-react"
+import { Plus, Search, Mail, Users, AlertCircle, ArrowUpRight } from "lucide-react"
 import CreateCampaignModal from "@/components/CreateCampaignModal"
 
 type Campaign = {
@@ -33,56 +26,51 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
     const status = getCampaignStatus(campaign.status)
 
     return (
-        <Link to={`/campaigns/${campaign.id}`}>
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-                <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                        <Badge variant={status.variant} className={status.className}>
-                            {status.label}
-                        </Badge>
+        <Link to={`/campaigns/${campaign.id}`} className="group">
+            <div className="bg-card border rounded-xl p-5 h-full transition-all duration-200 hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5">
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <h3 className="font-semibold text-[15px] truncate">{campaign.name}</h3>
+                        <ArrowUpRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                     </div>
-                    <CardDescription className="line-clamp-2">
-                        {campaign.goal || "No goal specified"}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <div className="flex items-start gap-2 text-sm text-muted-foreground min-w-0">
-                        <Mail size={14} className="mt-1 flex-shrink-0" />
-                        <div className="flex flex-col sm:flex-row sm:gap-1 min-w-0 flex-1">
-                            <span className="truncate" title={campaign.sender_name}>{campaign.sender_name}</span>
-                            <div className="flex min-w-0 text-muted-foreground/80" title={`<${campaign.sender_email}>`}>
-                                <span>&lt;</span>
-                                <span className="truncate">{campaign.sender_email}</span>
-                                <span>&gt;</span>
-                            </div>
-                        </div>
+                    <Badge variant={status.variant} className={`${status.className} text-[11px] ml-2`}>
+                        {status.label}
+                    </Badge>
+                </div>
+
+                <p className="text-[13px] text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+                    {campaign.goal || "No goal specified"}
+                </p>
+
+                <div className="flex items-center justify-between text-[12px] text-muted-foreground pt-3 border-t">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <Mail size={12} className="flex-shrink-0" />
+                        <span className="truncate">{campaign.sender_email}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users size={14} />
-                        <span>Max {campaign.max_follow_ups} follow-ups</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Users size={12} />
+                        <span>{campaign.max_follow_ups} follow-ups</span>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </Link>
     )
 }
 
 function CampaignSkeleton() {
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="h-5 w-16" />
-                </div>
-                <Skeleton className="h-4 w-full mt-2" />
-            </CardHeader>
-            <CardContent className="space-y-2">
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-4 w-32" />
-            </CardContent>
-        </Card>
+        <div className="bg-card border rounded-xl p-5">
+            <div className="flex justify-between items-start mb-3">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-5 w-14" />
+            </div>
+            <Skeleton className="h-4 w-full mb-1" />
+            <Skeleton className="h-4 w-2/3 mb-4" />
+            <div className="flex justify-between pt-3 border-t">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-3 w-20" />
+            </div>
+        </div>
     )
 }
 
@@ -97,29 +85,30 @@ function CampaignContent({
 }) {
     if (loading) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <CampaignSkeleton />
-                <CampaignSkeleton />
-                <CampaignSkeleton />
-                <CampaignSkeleton />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => <CampaignSkeleton key={i} />)}
             </div>
         )
     }
 
     if (campaigns.length === 0) {
         return (
-            <div className="text-center py-16 border border-dashed border-muted-foreground/50 rounded-lg">
-                <p className="text-muted-foreground mb-4">No campaigns found</p>
-                <Button onClick={() => setShowModal(true)} variant="outline" className="gap-2">
-                    <Plus size={18} />
-                    Create a campaign
+            <div className="text-center py-20">
+                <div className="rounded-full bg-muted w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                    <Mail size={20} className="text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground mb-1 text-sm">No campaigns yet</p>
+                <p className="text-muted-foreground/60 text-xs mb-6">Create your first campaign to get started.</p>
+                <Button onClick={() => setShowModal(true)} size="sm" className="gap-2">
+                    <Plus size={14} />
+                    Create Campaign
                 </Button>
             </div>
         )
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {campaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
             ))}
@@ -172,31 +161,31 @@ export default function Campaigns() {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="sticky top-0 z-10 bg-background px-8 pt-6 pb-4">
-                <div className="max-w-6xl mx-auto space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+            <div className="px-6 sm:px-8 pt-8 pb-6">
+                <div className="max-w-6xl mx-auto space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold">Campaigns</h1>
-                            <p className="text-muted-foreground mt-1">Manage your email outreach campaigns</p>
+                            <h1 className="text-4xl tracking-tight">Campaigns</h1>
+                            <p className="text-muted-foreground text-sm mt-1">Manage your email outreach campaigns</p>
                         </div>
-                        <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto">
-                            <Plus size={18} />
+                        <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto" size="sm">
+                            <Plus size={14} />
                             Create Campaign
                         </Button>
                     </div>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
                         <Input
-                            placeholder="Search by name, goal, sender, or status..."
+                            placeholder="Search campaigns..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
+                            className="pl-9 h-9 text-sm"
                         />
                     </div>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-8">
                 <div className="max-w-6xl mx-auto">
                     {error ? (
                         <Alert variant="destructive">
