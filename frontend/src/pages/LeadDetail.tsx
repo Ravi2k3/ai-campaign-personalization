@@ -147,8 +147,8 @@ export default function LeadDetail() {
 
     if (error) {
         return (
-            <div className="px-6 sm:px-8 py-8">
-                <div className="max-w-4xl mx-auto">
+            <div className="p-6">
+                <div className="max-w-4xl">
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{error}</AlertDescription>
@@ -162,8 +162,8 @@ export default function LeadDetail() {
     const isTerminal = lead?.status === "completed" || lead?.status === "replied" || lead?.status === "failed"
 
     return (
-        <div className="px-6 sm:px-8 py-8">
-            <div className="max-w-4xl mx-auto space-y-6">
+        <div className="p-6">
+            <div className="max-w-4xl space-y-6">
 
                 {/* ── Header ───────────────────────────────────────── */}
                 <div className="flex items-start justify-between">
@@ -176,7 +176,7 @@ export default function LeadDetail() {
                         ) : lead && (
                             <>
                                 <div className="flex items-center gap-3 mb-1">
-                                    <h1 className="heading-serif text-4xl tracking-tight">
+                                    <h1 className="text-2xl font-semibold tracking-tight">
                                         {lead.first_name} {lead.last_name}
                                     </h1>
                                     {leadStatus && (

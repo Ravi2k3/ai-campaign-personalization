@@ -7,7 +7,10 @@
       "Bash(wc -l /c/Ravi/LVG/outreach/ai-campaign-personalization/frontend/src/pages/*.tsx /c/Ravi/LVG/outreach/ai-campaign-personalization/frontend/src/components/*.tsx)",
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(npx shadcn@latest add badge breadcrumb avatar separator alert switch -y)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx shadcn@latest add sidebar -y)",
+      "Bash(npx shadcn@latest add sidebar --overwrite)"
     ]
   }
 }

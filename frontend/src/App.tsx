@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext"
 import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import AppLayout from "@/components/AppLayout"
 
@@ -26,6 +27,7 @@ export default function App() {
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <AuthProvider>
         <BreadcrumbProvider>
+          <TooltipProvider>
           <BrowserRouter>
             <Routes>
               {/* Public routes */}
@@ -41,6 +43,7 @@ export default function App() {
             </Routes>
           </BrowserRouter>
           <Toaster />
+          </TooltipProvider>
         </BreadcrumbProvider>
       </AuthProvider>
     </ThemeProvider>

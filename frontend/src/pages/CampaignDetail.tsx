@@ -191,8 +191,8 @@ export default function CampaignDetail() {
     const isRateLimited = stats ? stats.rate_limit_remaining === 0 : false
 
     return (
-        <div className="px-6 sm:px-8 py-8">
-            <div className="max-w-6xl mx-auto space-y-6">
+        <div className="p-6">
+            <div className="space-y-6">
 
                 {/* ── Header ───────────────────────────────────────── */}
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -205,7 +205,7 @@ export default function CampaignDetail() {
                         ) : (
                             <>
                                 <div className="flex items-center gap-3 mb-1">
-                                    <h1 className="heading-serif text-4xl tracking-tight truncate">
+                                    <h1 className="text-2xl font-semibold tracking-tight truncate">
                                         {campaign?.name}
                                     </h1>
                                     {campaign && (() => {

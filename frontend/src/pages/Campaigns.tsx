@@ -160,47 +160,40 @@ export default function Campaigns() {
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="px-6 sm:px-8 pt-8 pb-6">
-                <div className="max-w-6xl mx-auto space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                        <div>
-                            <h1 className="heading-serif text-4xl tracking-tight">Campaigns</h1>
-                            <p className="text-muted-foreground text-sm mt-1">Manage your email outreach campaigns</p>
-                        </div>
-                        <Button onClick={() => setShowModal(true)} className="gap-2 w-full sm:w-auto" size="sm">
-                            <Plus size={14} />
-                            Create Campaign
-                        </Button>
-                    </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
-                        <Input
-                            placeholder="Search campaigns..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 h-9 text-sm"
-                        />
-                    </div>
+        <div className="p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
+                    <p className="text-muted-foreground text-sm">Manage your email outreach campaigns</p>
                 </div>
+                <Button onClick={() => setShowModal(true)} className="gap-2" size="sm">
+                    <Plus size={14} />
+                    Create Campaign
+                </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-8">
-                <div className="max-w-6xl mx-auto">
-                    {error ? (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    ) : (
-                        <CampaignContent
-                            campaigns={filteredCampaigns}
-                            setShowModal={setShowModal}
-                            loading={loading}
-                        />
-                    )}
-                </div>
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
+                <Input
+                    placeholder="Search campaigns..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                />
             </div>
+
+            {error ? (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            ) : (
+                <CampaignContent
+                    campaigns={filteredCampaigns}
+                    setShowModal={setShowModal}
+                    loading={loading}
+                />
+            )}
 
             <CreateCampaignModal
                 open={showModal}
