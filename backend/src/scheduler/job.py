@@ -668,10 +668,12 @@ async def process_leads_job() -> None:
         now = datetime.now(timezone.utc)
 
         for uid, gens in user_gen_groups.items():
-            # Get the last sent message_id per lead for threading
+            # Get the last sent message_id and the original subject per lead for threading
             lead_ids_in_group = [gen["lead_id"] for gen in gens]
             last_message_ids: Dict[str, Optional[str]] = {}
+            original_subjects: Dict[str, str] = {}
             with get_cursor() as cur:
+                # Last message_id for In-Reply-To header
                 cur.execute(
                     """
                     SELECT DISTINCT ON (lead_id) lead_id, message_id
@@ -684,21 +686,44 @@ async def process_leads_job() -> None:
                 for row in cur.fetchall():
                     last_message_ids[str(row["lead_id"])] = row["message_id"]
 
+                # First email subject for thread consistency
+                cur.execute(
+                    """
+                    SELECT DISTINCT ON (lead_id) lead_id, subject
+                    FROM emails
+                    WHERE lead_id = ANY(%s::uuid[]) AND status = 'sent'
+                    ORDER BY lead_id, sequence_number ASC
+                    """,
+                    (lead_ids_in_group,),
+                )
+                for row in cur.fetchall():
+                    original_subjects[str(row["lead_id"])] = row["subject"]
+
             # Build mail list for this user
             mails_to_send = []
             for gen in gens:
                 lead = gen["lead"]
+                lead_id = gen["lead_id"]
+
+                # For follow-ups, use "Re: {original subject}" to maintain thread
+                subject = gen["subject"]
+                if lead_id in original_subjects and gen["sequence_number"] > 1:
+                    orig = original_subjects[lead_id]
+                    # Don't double-prefix if LLM already added "Re:"
+                    if not subject.lower().startswith("re:"):
+                        subject = f"Re: {orig}"
+
                 mail = Mail(
                     sender=Sender(name=lead["sender_name"], email=lead["sender_email"]),
                     to=lead["email"],
-                    subject=gen["subject"],
+                    subject=subject,
                     body=gen["body"],
                 )
                 mails_to_send.append({
                     "mail": mail,
-                    "lead_id": gen["lead_id"],
+                    "lead_id": lead_id,
                     "sequence_number": gen["sequence_number"],
-                    "in_reply_to": last_message_ids.get(gen["lead_id"]),
+                    "in_reply_to": last_message_ids.get(lead_id),
                 })
 
             try:
