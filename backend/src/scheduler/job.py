@@ -1,5 +1,8 @@
 import asyncio
+import email
+import email.utils
 import functools
+import imaplib
 import os
 
 from datetime import datetime, timezone
@@ -11,6 +14,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from dotenv import load_dotenv
 
 from ..db import get_cursor
+from ..auth.tokens import get_valid_access_token
 from ..mail.agent import generate_mail
 from ..mail.client import (
     send_mails_sequential,
@@ -493,48 +497,72 @@ async def generate_email_for_lead(
 # ── Main Job: Process Leads ─────────────────────────────────────────────────
 
 
-async def _inline_reply_check() -> None:
-    """
-    Quick reply check that runs at the start of every send job.
-    Prevents sending follow-ups to leads who just replied but haven't
-    been caught by the periodic reply-check job yet.
-    """
-    with get_cursor() as cur:
-        cur.execute(
-            """
-            SELECT DISTINCT u.id as user_id, u.email as user_email
-            FROM users u
-            JOIN campaigns c ON c.user_id = u.id
-            JOIN leads l ON l.campaign_id = c.id
-            WHERE c.status = 'active'
-              AND l.has_replied = false
-              AND l.status NOT IN ('replied', 'failed')
-              AND u.refresh_token_encrypted IS NOT NULL
-            """
-        )
-        users = cur.fetchall()
+def _build_imap_xoauth2(user_email: str, access_token: str) -> bytes:
+    """Build XOAUTH2 auth string for IMAP."""
+    return f"user={user_email}\x01auth=Bearer {access_token}\x01\x01".encode()
 
-    if not users:
-        return
 
-    for user in users:
-        uid = str(user["user_id"])
-        user_email = user["user_email"]
+def _targeted_reply_check(
+    user_id: str,
+    user_email: str,
+    lead_emails: list[str],
+    lead_email_to_id: dict[str, str],
+) -> set[str]:
+    """
+    Lightweight IMAP check for replies from a small set of specific lead addresses.
+    Called right before sending follow-ups to a user. Only searches for emails from
+    the leads we're about to send to, not the entire inbox.
+
+    Much cheaper than a full inbox scan: one IMAP connection, one targeted search.
+    Returns set of lead_ids that have replied.
+    """
+    if not lead_emails:
+        return set()
+
+    replied_lead_ids: set[str] = set()
+
+    try:
+        access_token = get_valid_access_token(user_id)
+        auth_string = _build_imap_xoauth2(user_email, access_token)
+
+        imap_conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        imap_conn.authenticate("XOAUTH2", lambda _: auth_string)
+        imap_conn.select("INBOX", readonly=True)
 
         try:
-            replies = await run_sync(check_replies_for_user, uid, user_email)
-            for reply in replies:
-                reply_body = extract_reply_text(reply.get("body", ""))
-                mark_lead_replied(
-                    lead_id=reply["lead_id"],
-                    subject=reply.get("subject", ""),
-                    reply_content=reply_body or "(Reply content unavailable)",
-                    gmail_message_id=reply.get("gmail_message_id"),
-                )
-            if replies:
-                logger.info(f"[CRON] Pre-send reply check found {len(replies)} replies for user {uid}")
-        except Exception as e:
-            logger.warning(f"[CRON] Pre-send reply check failed for user {uid}: {e}")
+            if len(lead_emails) == 1:
+                from_criteria = f'FROM "{lead_emails[0]}"'
+            else:
+                from_criteria = f'FROM "{lead_emails[0]}"'
+                for addr in lead_emails[1:]:
+                    from_criteria = f'OR ({from_criteria}) (FROM "{addr}")'
+
+            status, msg_nums = imap_conn.search(None, f"({from_criteria})")
+            if status == "OK" and msg_nums[0]:
+                for num in msg_nums[0].split():
+                    status, data = imap_conn.fetch(num, "(RFC822.HEADER)")
+                    if status != "OK" or not data:
+                        continue
+                    for part in data:
+                        if isinstance(part, tuple) and b"HEADER" in part[0]:
+                            msg = email.message_from_bytes(part[1])
+                            from_addr = email.utils.parseaddr(msg.get("From", ""))[1].lower()
+                            if from_addr in lead_email_to_id:
+                                lead_id = lead_email_to_id[from_addr]
+                                replied_lead_ids.add(lead_id)
+                                mark_lead_replied(
+                                    lead_id=lead_id,
+                                    subject=msg.get("Subject", ""),
+                                    reply_content="(detected pre-send)",
+                                    gmail_message_id=msg.get("Message-ID", ""),
+                                )
+        finally:
+            imap_conn.logout()
+
+    except Exception as e:
+        logger.warning(f"[CRON] Targeted reply check failed for user {user_id}: {e}")
+
+    return replied_lead_ids
 
 
 async def process_leads_job() -> None:
@@ -554,14 +582,6 @@ async def process_leads_job() -> None:
     9. Check campaign completion
     """
     try:
-        # Step 0: Check for replies before sending anything.
-        # This prevents the race condition where a lead replies between
-        # reply-check intervals but the send job picks them up first.
-        try:
-            await _inline_reply_check()
-        except Exception as e:
-            logger.warning(f"[CRON] Inline reply check failed (proceeding with send): {e}")
-
         # Step 1: Fetch eligible leads
         leads = await run_sync(_get_eligible_leads)
         if not leads:
@@ -721,6 +741,24 @@ async def process_leads_job() -> None:
         now = datetime.now(timezone.utc)
 
         for uid, gens in user_gen_groups.items():
+            # Targeted reply check: only for leads we're about to email
+            user_email_for_check = gens[0]["lead"]["sender_email"]
+            lead_emails_to_check = [g["lead"]["email"].lower() for g in gens]
+            lead_email_to_id_map = {g["lead"]["email"].lower(): g["lead_id"] for g in gens}
+
+            try:
+                just_replied = await run_sync(
+                    _targeted_reply_check, uid, user_email_for_check,
+                    lead_emails_to_check, lead_email_to_id_map,
+                )
+                if just_replied:
+                    logger.info(f"[CRON] Pre-send check caught {len(just_replied)} replies for user {uid}")
+                    gens = [g for g in gens if g["lead_id"] not in just_replied]
+                    if not gens:
+                        continue
+            except Exception as e:
+                logger.warning(f"[CRON] Targeted reply check failed for user {uid}: {e}")
+
             # Get the last sent message_id and the original subject per lead for threading
             lead_ids_in_group = [gen["lead_id"] for gen in gens]
             last_message_ids: Dict[str, Optional[str]] = {}
