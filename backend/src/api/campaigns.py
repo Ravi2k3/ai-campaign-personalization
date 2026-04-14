@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..auth import get_current_user
 from ..db import get_cursor
@@ -162,7 +162,7 @@ async def update_campaign(
 @router.post("/{campaign_id}/preview", response_model=EmailPreviewResponse)
 async def preview_email(
     campaign_id: str,
-    lead_id: str,
+    lead_id: str = Query(...),
     user: dict[str, Any] = Depends(get_current_user),
 ):
     """Generate a preview email for a specific lead without sending it."""

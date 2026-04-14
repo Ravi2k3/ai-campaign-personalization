@@ -193,40 +193,38 @@ export default function CreateCampaignModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Campaign Name</Label>
-                        <Input
-                            id="name"
-                            value={form.name}
-                            onChange={handleInputChange}
-                            placeholder="Q1 Outreach"
-                            className={fieldErrors.name ? "border-destructive" : ""}
-                        />
-                        {fieldErrors.name && (
-                            <p className="text-xs text-destructive">{fieldErrors.name}</p>
-                        )}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* ── Basics ──────────────────────────── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="name" className="text-[12px]">Campaign Name</Label>
+                            <Input
+                                id="name"
+                                value={form.name}
+                                onChange={handleInputChange}
+                                placeholder="Q1 Outreach"
+                                className={`h-9 text-sm ${fieldErrors.name ? "border-destructive" : ""}`}
+                            />
+                            {fieldErrors.name && <p className="text-[11px] text-destructive">{fieldErrors.name}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="sender_name" className="text-[12px]">Sender Name</Label>
+                            <Input
+                                id="sender_name"
+                                value={form.sender_name}
+                                onChange={handleInputChange}
+                                placeholder="John Doe"
+                                className={`h-9 text-sm ${fieldErrors.sender_name ? "border-destructive" : ""}`}
+                            />
+                            {fieldErrors.sender_name && <p className="text-[11px] text-destructive">{fieldErrors.sender_name}</p>}
+                        </div>
                     </div>
+                    <p className="text-[11px] text-muted-foreground -mt-2">Emails will be sent from your Google account.</p>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="sender_name">Sender Name</Label>
-                        <Input
-                            id="sender_name"
-                            value={form.sender_name}
-                            onChange={handleInputChange}
-                            placeholder="John Doe"
-                            className={fieldErrors.sender_name ? "border-destructive" : ""}
-                        />
-                        {fieldErrors.sender_name && (
-                            <p className="text-xs text-destructive">{fieldErrors.sender_name}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                            Emails will be sent from your Google account.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Follow-up Delay</Label>
+                    {/* ── Sequence Settings ────────────────── */}
+                    <div className="border-t pt-4 space-y-3">
+                    <div className="space-y-1.5">
+                        <Label className="text-[12px]">Follow-up Delay</Label>
                         <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
                                 <div className="relative">
@@ -289,8 +287,8 @@ export default function CreateCampaignModal({
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="max_follow_ups">Max Follow-ups</Label>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="max_follow_ups" className="text-[12px]">Max Follow-ups</Label>
                         <Input
                             id="max_follow_ups"
                             type="number"
@@ -298,40 +296,40 @@ export default function CreateCampaignModal({
                             placeholder="0"
                             value={form.max_follow_ups || ""}
                             onChange={handleMaxFollowUpsChange}
-                            className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${fieldErrors.max_follow_ups ? "border-destructive" : ""}`}
+                            className={`h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${fieldErrors.max_follow_ups ? "border-destructive" : ""}`}
                         />
                         {fieldErrors.max_follow_ups ? (
-                            <p className="text-xs text-destructive">{fieldErrors.max_follow_ups}</p>
+                            <p className="text-[11px] text-destructive">{fieldErrors.max_follow_ups}</p>
                         ) : (
-                            <p className="text-xs text-muted-foreground">
-                                Number of follow-up emails before stopping (1-10)
-                            </p>
+                            <p className="text-[11px] text-muted-foreground">1-10 follow-up emails before stopping</p>
                         )}
                     </div>
+                    </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="goal">Campaign Goal</Label>
+                    {/* ── Goal ─────────────────────────────── */}
+                    <div className="border-t pt-4 space-y-1.5">
+                        <Label htmlFor="goal" className="text-[12px]">Campaign Goal</Label>
                         <textarea
                             id="goal"
                             value={form.goal}
                             onChange={handleInputChange}
-                            className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.goal ? "border-destructive" : ""}`}
-                            placeholder="Example: We help [Marketing Agencies] solve [Lead Quality Issues] by providing [AI Scraping]. The goal is to get them to [Book a 15 min call]."
+                            className={`flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.goal ? "border-destructive" : ""}`}
+                            placeholder="We help [Marketing Agencies] solve [Lead Quality Issues] by providing [AI Scraping]. Goal: get them to [Book a 15 min call]."
                         />
-                        {fieldErrors.goal && (
-                            <p className="text-xs text-destructive">{fieldErrors.goal}</p>
-                        )}
+                        {fieldErrors.goal && <p className="text-[11px] text-destructive">{fieldErrors.goal}</p>}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="scheduled_start_at">Schedule Start (optional)</Label>
+                    {/* ── Schedule (optional) ──────────────── */}
+                    <div className="border-t pt-4 space-y-1.5">
+                        <Label htmlFor="scheduled_start_at" className="text-[12px]">Schedule Start <span className="text-muted-foreground font-normal">(optional)</span></Label>
                         <Input
                             id="scheduled_start_at"
                             type="datetime-local"
                             value={form.scheduled_start_at}
                             onChange={(e) => setForm(prev => ({ ...prev, scheduled_start_at: e.target.value }))}
+                            className="h-9 text-sm"
                         />
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                             Leave empty to start manually after adding leads.
                         </p>
                     </div>
