@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from src.db import init_db, test_connection, init_pool, close_pool  # type: ignore
-from src.api import campaigns_router, leads_router, leads_detail_router  # type: ignore
+from src.api import campaigns_router, leads_router, leads_detail_router, documents_router  # type: ignore
 from src.auth import auth_router  # type: ignore
 from src.scheduler import start_scheduler, stop_scheduler  # type: ignore
 
@@ -50,6 +50,7 @@ api_router.include_router(auth_router)
 api_router.include_router(campaigns_router)
 api_router.include_router(leads_router)
 api_router.include_router(leads_detail_router)
+api_router.include_router(documents_router)
 
 
 @api_router.get("/health")

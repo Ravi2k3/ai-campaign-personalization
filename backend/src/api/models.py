@@ -23,8 +23,16 @@ class CampaignResponse(BaseModel):
     max_follow_ups: int
     status: str
     scheduled_start_at: Optional[datetime] = None
+    product_context: Optional[str] = None
+    product_document_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+
+class ProductDocumentResponse(BaseModel):
+    document_name: str
+    brief: str
+    word_count: int
 
 # Request/Response models for leads
 class LeadCreate(BaseModel):

@@ -141,6 +141,10 @@ MIGRATIONS: list[tuple[int, str, str]] = [
     (5, "Add scheduled_start_at to campaigns", """
         ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS scheduled_start_at TIMESTAMPTZ;
     """),
+    (6, "Add product document columns to campaigns", """
+        ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS product_context TEXT;
+        ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS product_document_name TEXT;
+    """),
 ]
 
 

@@ -125,6 +125,14 @@ Generate a personalized email.
 ## CAMPAIGN
 {campaign_info}
 
+## PRODUCT / COMPANY BRIEF
+(May be empty. When present, this is a structured brief distilled from a
+document the campaign owner uploaded. Treat every fact, number, customer
+name, certification, and spec in it as authoritative source material you
+may draw on. Do not invent anything beyond it.)
+
+{product_context}
+
 ## PREVIOUS EMAILS IN SEQUENCE
 {previous_emails}
 
@@ -193,10 +201,18 @@ async def generate_mail(
         persistence=False
     )
     
+    product_context = campaign_info.get("product_context") if isinstance(campaign_info, dict) else None
+    # Scrub it from campaign_info so it's not printed twice in the prompt.
+    campaign_info_clean = (
+        {k: v for k, v in campaign_info.items() if k != "product_context"}
+        if isinstance(campaign_info, dict)
+        else campaign_info
+    )
     email_agent_prompt = Content(PROMPT.format(
         user_info=user_info,
-        campaign_info=campaign_info,
-        previous_emails=previous_emails
+        campaign_info=campaign_info_clean,
+        product_context=product_context or "(no document uploaded)",
+        previous_emails=previous_emails,
     ))
 
     last_exception = None

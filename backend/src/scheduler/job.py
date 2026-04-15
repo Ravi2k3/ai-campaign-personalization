@@ -100,6 +100,7 @@ def _get_eligible_leads() -> List[Dict[str, Any]]:
                 c.sender_name,
                 c.sender_email,
                 c.goal,
+                c.product_context,
                 c.follow_up_delay_minutes,
                 c.max_follow_ups,
                 u.id as user_id,
@@ -469,6 +470,7 @@ async def generate_email_for_lead(
         campaign_info = {
             "name": lead["campaign_name"],
             "goal": lead["goal"],
+            "product_context": lead.get("product_context"),
             "sender_name": lead["sender_name"],
             "sender_email": lead["sender_email"],
             "current_sequence": lead["current_sequence"] + 1,

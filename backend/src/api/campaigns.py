@@ -14,7 +14,8 @@ router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 _CAMPAIGN_COLS = """
     id, user_id, name, sender_name, sender_email, goal,
     follow_up_delay_minutes, max_follow_ups, status,
-    scheduled_start_at, created_at, updated_at
+    scheduled_start_at, product_context, product_document_name,
+    created_at, updated_at
 """
 
 
@@ -217,6 +218,7 @@ async def preview_email(
     campaign_info = {
         "name": campaign["name"],
         "goal": campaign["goal"],
+        "product_context": campaign.get("product_context"),
         "sender_name": campaign["sender_name"],
         "sender_email": campaign["sender_email"],
         "current_sequence": lead["current_sequence"] + 1,

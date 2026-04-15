@@ -29,6 +29,7 @@ import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
 import DeleteCampaignModal from "@/components/DeleteCampaignModal"
 import PreviewEmailModal from "@/components/PreviewEmailModal"
+import ProductDocumentCard from "@/components/ProductDocumentCard"
 
 type Campaign = {
     id: string
@@ -40,6 +41,8 @@ type Campaign = {
     max_follow_ups: number
     status: string
     scheduled_start_at: string | null
+    product_context: string | null
+    product_document_name: string | null
 }
 
 type CampaignStats = {
@@ -364,6 +367,17 @@ export default function CampaignDetail() {
                         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1">Goal</p>
                         <p className="text-[13px] leading-relaxed text-foreground/80">{campaign.goal}</p>
                     </div>
+                )}
+
+                {/* ── Product Document ─────────────────────────────────── */}
+                {!loading && campaign && !editing && (
+                    <ProductDocumentCard
+                        campaignId={campaign.id}
+                        canEdit={canEdit}
+                        documentName={campaign.product_document_name}
+                        brief={campaign.product_context}
+                        onChange={fetchData}
+                    />
                 )}
 
                 {/* ── Edit Panel ──────────────────────────────────────── */}

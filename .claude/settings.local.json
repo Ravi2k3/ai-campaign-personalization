@@ -19,7 +19,15 @@
       "Bash(npx shadcn@latest init --preset mira -f --reinstall)",
       "Bash(wsl bash:*)",
       "WebFetch(domain:www.lakshmivacuum.com)",
-      "Bash(del \"frontend\\\\src\\\\components\\\\CreateCampaignModal.tsx\")"
+      "Bash(del \"frontend\\\\src\\\\components\\\\CreateCampaignModal.tsx\")",
+      "WebFetch(domain:themenonlab.blog)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docling-project.github.io)",
+      "WebFetch(domain:unstructured.io)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -H \"Authorization: Bearer sk-523a7043fd1f428f9a475f08fb037ce6\" \"https://api.deepseek.com/models\")",
+      "Bash(curl -s -H \"Authorization: Bearer sk-523a7043fd1f428f9a475f08fb037ce6\" \"https://api.deepseek.com/models\")",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\([m['id'] for m in d['data']]\\)\")"
     ]
   }
 }
