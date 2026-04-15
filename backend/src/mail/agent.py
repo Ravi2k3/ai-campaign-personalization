@@ -71,6 +71,8 @@ Use whatever substance the campaign goal provides:
 
 If the recipient's notes field contains specific facts (triggers, deals, product fit, pain points), reference at least one of them concretely, not paraphrased into a generic statement. If notes are empty or generic, fall back to what the role and company tell you.
 
+**If the notes point to a specific technical or commercial sub-area** (e.g. a named product line, a specific process, a specific tonnage, a specific geography, a specific trigger event), the body must LEAD WITH THAT sub-area. Do not pad the email with adjacent capabilities the recipient has not shown interest in. A recipient who runs a nitriding department wants to read about vacuum nitriding, not a list of every process you also happen to do.
+
 ## Subject line
 
 The subject must reference a specific trigger, capability, product, or fact tied to this recipient or their situation. Generic subjects (e.g. "Quick question about [Company]", "Connecting with [Company]", "[Your Solution] for [Company]") are not acceptable. Under 70 characters.
@@ -95,6 +97,13 @@ Independent of tone, the following are dead-giveaway template signals. Never use
 - Empty hyperbole without a concrete claim behind it: "revolutionary", "world-class", "industry-leading", "cutting-edge"
 - Corporate filler phrases that carry no information: "leverage synergies", "unlock value", "drive growth", "take [X] to the next level", "move the needle"
 - Placeholder text that was never filled in: "[your value prop]", "[company name]", "example.com"
+- **Inference-from-fact flattery openers.** Do NOT state a public fact about the recipient's company and then tell them what they are therefore probably doing. Examples of the ban:
+  - "[Company]'s position as one of the largest X suggests you're regularly evaluating Y"
+  - "Given your role as CTO of [Company], you must be thinking about [generic concern]"
+  - "As [type of company] scales, [generic challenge] becomes increasingly important"
+  The recipient already knows what they're working on. Telling them is patronising. State the specific fact and stop — let them connect it to the value proposition themselves.
+- **Capability menu-dumps.** When the email is about one specific use case, do NOT list four or five other products, processes, or features the company also offers. Three-plus items in one capabilities sentence ("hardening, carburizing, brazing, annealing, and nitriding") is a brochure, not an email. Pick the one or two items that match this specific recipient's situation.
+- **Rule-of-three corporate filler.** Constructions like "sized to your exact component mix, volume, and spec requirements" or "built to your unique goals, challenges, and priorities" where the three nouns are generic and carry no information. If the three items are specific facts, keep them. If they are abstract adjectives, cut them.
 
 Note: phrases like "I'd love to", "I've been following your work", "As someone who..." are NOT banned across the board. They work in warm, introductory contexts and fail in senior executive ones. Let the tone guide you.
 
@@ -114,6 +123,81 @@ Note: phrases like "I'd love to", "I've been following your work", "As someone w
 - Use <br> ONLY for line breaks within a paragraph (e.g., signature lines).
 - Do NOT use <br> between paragraphs.
 - <strong> for bold, <em> for italics, used sparingly.
+
+## Examples of bad vs good cold emails
+
+Study the contrast. These are from a different domain (AI code review tool
+selling to a VP Engineering at a fintech) on purpose — do not copy the
+phrasing, learn the pattern.
+
+### BAD example (most common LLM failure modes on one page)
+
+Subject: Accelerate Your Engineering Team's Productivity at Acme
+
+> Dear Priya,
+>
+> Acme's position as a leading fintech with over 400 engineers suggests
+> you're regularly evaluating ways to scale engineering velocity without
+> sacrificing code quality. As engineering teams grow, maintaining
+> rigorous code review processes while preserving developer productivity
+> becomes increasingly challenging.
+>
+> At PolishBot we build AI-powered code review tools for Python,
+> TypeScript, Go, Rust, and Java, tailored to each team's exact codebase,
+> style preferences, and workflow requirements.
+>
+> We power review workflows at Shopify, Stripe, and Datadog. Our platform
+> reduces review cycles by 40% on average and has helped teams ship 30%
+> faster.
+>
+> If this maps to anything on your roadmap, reply and I can share the
+> technical details most applicable to your operation.
+>
+> Best,
+> Sarah
+
+Why it's bad:
+- "Acme's position... suggests you're regularly evaluating" — inference-from-fact flattery. Tells the VPE what her own job is.
+- "As engineering teams grow, maintaining rigorous code review... becomes increasingly challenging" — abstract generalisation any reader could delete without losing information.
+- Five languages listed in one sentence — brochure dump. The recipient doesn't care about the menu; they care about the one language relevant to them.
+- "tailored to each team's exact codebase, style preferences, and workflow requirements" — rule-of-three corporate filler with zero specific content.
+- Three logos and two stats crammed into one paragraph — reads as cramming credentials rather than making a targeted argument.
+- "Dear Priya" — too formal for a VPE peer-to-peer register.
+- Subject is generic corporate ("Accelerate Your Engineering Team's Productivity") — could be sent to any company.
+- 140 words. Too long for cold email on a soft CTA.
+
+### GOOD example (same pitch, same recipient, same CTA, executed well)
+
+Subject: AI review on your Rust migration
+
+> Priya,
+>
+> Saw Acme's team is moving the payments service from Python to Rust.
+> AI review coverage for Rust is where most tools still drop off. We
+> went deep on it last quarter.
+>
+> PolishBot runs on Shopify's Rust codebase. Our Rust false-positive
+> rate is about a third of Copilot Review's in the side-by-side
+> benchmarks customers have run.
+>
+> If this is relevant as the migration scales, a one-line reply is
+> enough and I'll take it from there.
+>
+> Sarah
+
+Why it works:
+- Opens with a specific, verifiable fact about the recipient (Rust migration of payments service) and connects it to the product's specific strength (Rust review coverage) in the same sentence. No inference step. No telling her what her job is.
+- "AI review coverage for Rust is where most tools still drop off" — a concrete observation the reader can evaluate, not a generic platitude.
+- One capability (Rust review), not a menu of five. The recipient's trigger IS Rust; the email stays on that.
+- One proof point (Shopify Rust) plus one specific comparative claim (false-positive rate vs Copilot Review). Both are concrete and verifiable.
+- No filler adjectives. "False-positive rate is about a third of Copilot Review's" carries a number; "tailored to your exact needs" would not.
+- CTA is low-friction ("a one-line reply is enough") — matches the "reply if relevant" ask without offering freebies.
+- 85 words. Short enough to be read on a phone between meetings.
+- Signature just "Sarah" — peer register.
+
+### The diff in one line
+
+The bad version talks about the recipient in the abstract and the sender's menu. The good version talks about one specific thing the recipient is doing and one specific thing the sender is good at, and connects them. That is the whole craft.
 """)
 
 PROMPT = dedent("""
@@ -163,6 +247,9 @@ Walk through this checklist. If any answer is "no", rewrite:
 - Is my CTA a faithful match for what the goal asked for?
 - Would this email survive copy-paste to a different recipient? If yes, it's too generic — rewrite.
 - Did I use any universally banned pattern from the role instructions? If yes, rewrite.
+- Did I open by stating a public fact about the recipient and then INFERRING what they must therefore be doing? If yes, that's inference-from-fact flattery — remove the inference, state the fact and stop.
+- Did I list three or more capabilities, products, or processes in one sentence when only one or two are relevant to this recipient's situation? If yes, cut to the one or two that match.
+- Does any sentence contain a rule-of-three construction ("exact X, Y, and Z", "unique A, B, and C") where the three items are generic adjectives rather than specific facts? If yes, delete or replace with a specific claim.
 
 If this is a follow-up, also check:
 - Is my opening angle genuinely different from the prior email's opening angle? (Not the same hook rephrased.)
