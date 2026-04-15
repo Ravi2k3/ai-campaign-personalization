@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import {
     Tooltip,
     TooltipContent,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import {
     Upload, UserPlus, Search, Play, Pause, Trash2,
-    ArrowUpRight, Eye, Pencil, Check, X, Copy, CalendarClock,
+    ArrowUpRight, Eye, Pencil, Check, X, Copy, CalendarClock, AlertTriangle,
 } from "lucide-react"
 import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
@@ -196,8 +197,20 @@ export default function CampaignDetail() {
     const toggleSelectLead = (lid: string) => {
         setSelectedLeads(prev => { const n = new Set(prev); n.has(lid) ? n.delete(lid) : n.add(lid); return n })
     }
+    // Select-all toggles only within the current filter: if every visible lead
+    // is already selected, deselect them (leaving out-of-filter selections intact).
+    // Otherwise, add every visible lead to the selection.
+    const allFilteredSelected = filteredLeads.length > 0 && filteredLeads.every(l => selectedLeads.has(l.id))
     const toggleSelectAll = () => {
-        setSelectedLeads(selectedLeads.size === filteredLeads.length ? new Set() : new Set(filteredLeads.map(l => l.id)))
+        setSelectedLeads(prev => {
+            const next = new Set(prev)
+            if (allFilteredSelected) {
+                filteredLeads.forEach(l => next.delete(l.id))
+            } else {
+                filteredLeads.forEach(l => next.add(l.id))
+            }
+            return next
+        })
     }
 
     const canEdit = campaign?.status === "draft" || campaign?.status === "paused"
@@ -325,6 +338,18 @@ export default function CampaignDetail() {
                     </div>
                 )}
 
+                {/* ── Rate-limit banner ───────────────────────────────── */}
+                {!loading && isRateLimited && stats?.rate_limit_resets_at && (
+                    <Alert variant="destructive">
+                        <AlertTriangle />
+                        <AlertTitle>Sending paused — hourly quota reached</AlertTitle>
+                        <AlertDescription>
+                            {stats.rate_limit} emails sent in the last {stats.rate_limit_window_minutes} minutes. Sending resumes at{" "}
+                            {new Date(stats.rate_limit_resets_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 {/* ── Scheduled Start (subtle, no card) ───────────────── */}
                 {!loading && campaign?.scheduled_start_at && campaign.status === "draft" && (
                     <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
@@ -419,7 +444,7 @@ export default function CampaignDetail() {
                                 <TableHeader className="sticky top-0 bg-card z-10">
                                     <TableRow>
                                         <TableHead className="w-10">
-                                            <input type="checkbox" checked={selectedLeads.size === filteredLeads.length && filteredLeads.length > 0} onChange={toggleSelectAll} className="rounded border-input" />
+                                            <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} aria-label={allFilteredSelected ? "Deselect all visible leads" : "Select all visible leads"} className="rounded border-input" />
                                         </TableHead>
                                         <TableHead className="text-[12px]">Name</TableHead>
                                         <TableHead className="text-[12px]">Email</TableHead>
@@ -432,7 +457,7 @@ export default function CampaignDetail() {
                                     {filteredLeads.map(lead => {
                                         const s = getLeadStatus(lead.status)
                                         return (
-                                            <TableRow key={lead.id} className="cursor-pointer group" onClick={() => window.location.href = `/campaigns/${id}/leads/${lead.id}`}>
+                                            <TableRow key={lead.id} className="cursor-pointer group hover:bg-muted/40" onClick={() => navigate(`/campaigns/${id}/leads/${lead.id}`)}>
                                                 <TableCell onClick={e => e.stopPropagation()}>
                                                     <input type="checkbox" checked={selectedLeads.has(lead.id)} onChange={() => toggleSelectLead(lead.id)} className="rounded border-input" />
                                                 </TableCell>

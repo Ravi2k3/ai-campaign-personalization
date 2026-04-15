@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
+import DOMPurify from "dompurify"
 import { get, patch } from "@/lib/api"
 import { formatTime } from "@/lib/utils"
 import { getLeadStatus, getEmailStatus } from "@/lib/status"
@@ -403,18 +404,30 @@ export default function LeadDetail() {
                                                     {email.subject}
                                                 </p>
 
-                                                {isExpanded && (
-                                                    <div className="mt-3 pt-3 border-t">
+                                                <div
+                                                    className={`grid transition-[grid-template-rows,opacity,margin-top] duration-300 ease-out ${
+                                                        isExpanded ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0 mt-0"
+                                                    }`}
+                                                >
+                                                    <div className="overflow-hidden">
+                                                        <div className="pt-3 border-t">
                                                         <div
                                                             className="text-[13px] leading-relaxed [&>p]:mb-2.5 [&>p:last-child]:mb-0"
                                                             dangerouslySetInnerHTML={{
                                                                 __html: email.status === "failed"
                                                                     ? "We couldn't send this email. Please check if the email address is valid."
-                                                                    : email.body
+                                                                    : DOMPurify.sanitize(email.body, {
+                                                                        // Strip all scripts, event handlers, and dangerous tags.
+                                                                        // Allow only the basic formatting Gmail and our LLM produce.
+                                                                        ALLOWED_TAGS: ["p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li", "blockquote", "span", "div"],
+                                                                        ALLOWED_ATTR: ["href", "target", "rel"],
+                                                                        ALLOW_DATA_ATTR: false,
+                                                                    })
                                                             }}
                                                         />
+                                                        </div>
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
                                         </div>
                                     )

@@ -132,7 +132,7 @@ class TestTokenStorage:
 class TestOAuth:
     def test_google_login_returns_auth_url(self):
         with TestClient(app) as c:
-            resp = c.get("/auth/google/login")
+            resp = c.get("/api/auth/google/login")
         assert resp.status_code == 200
         data = resp.json()
         assert "url" in data
@@ -166,7 +166,7 @@ class TestOAuth:
         }
 
         with TestClient(app) as c:
-            resp = c.post("/auth/google/callback", json={"code": "auth-code", "state": "test-state"})
+            resp = c.post("/api/auth/google/callback", json={"code": "auth-code", "state": "test-state"})
 
         assert resp.status_code == 200
         data = resp.json()
@@ -212,7 +212,7 @@ class TestOAuth:
         }
 
         with TestClient(app) as c:
-            resp = c.post("/auth/google/callback", json={"code": "code", "state": "state"})
+            resp = c.post("/api/auth/google/callback", json={"code": "code", "state": "state"})
 
         assert resp.status_code == 200
         data = resp.json()

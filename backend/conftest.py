@@ -241,9 +241,45 @@ def second_user() -> dict[str, Any]:
     )
 
 
+class _PrefixedTestClient:
+    """
+    Wrapper around FastAPI TestClient that auto-prepends /api to request paths.
+    All API routes are mounted under /api (for Caddy reverse-proxy in prod),
+    but tests are written against bare paths for readability.
+    """
+
+    def __init__(self, client: Any) -> None:
+        self._client = client
+
+    def _prefix(self, url: str) -> str:
+        if url.startswith("http") or url.startswith("/api"):
+            return url
+        if url.startswith("/"):
+            return "/api" + url
+        return "/api/" + url
+
+    def get(self, url: str, **kwargs: Any) -> Any:
+        return self._client.get(self._prefix(url), **kwargs)
+
+    def post(self, url: str, **kwargs: Any) -> Any:
+        return self._client.post(self._prefix(url), **kwargs)
+
+    def put(self, url: str, **kwargs: Any) -> Any:
+        return self._client.put(self._prefix(url), **kwargs)
+
+    def patch(self, url: str, **kwargs: Any) -> Any:
+        return self._client.patch(self._prefix(url), **kwargs)
+
+    def delete(self, url: str, **kwargs: Any) -> Any:
+        return self._client.delete(self._prefix(url), **kwargs)
+
+    def request(self, method: str, url: str, **kwargs: Any) -> Any:
+        return self._client.request(method, self._prefix(url), **kwargs)
+
+
 @pytest.fixture()
 def client(test_user: dict[str, Any]):
-    """FastAPI TestClient authenticated as test_user."""
+    """FastAPI TestClient authenticated as test_user. Auto-prefixes /api to paths."""
     from fastapi.testclient import TestClient
 
     async def override_auth():
@@ -251,13 +287,13 @@ def client(test_user: dict[str, Any]):
 
     app.dependency_overrides[get_current_user] = override_auth
     with TestClient(app) as c:
-        yield c
+        yield _PrefixedTestClient(c)
     app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture()
 def client_user2(second_user: dict[str, Any]):
-    """FastAPI TestClient authenticated as second_user."""
+    """FastAPI TestClient authenticated as second_user. Auto-prefixes /api to paths."""
     from fastapi.testclient import TestClient
 
     async def override_auth():
@@ -265,7 +301,7 @@ def client_user2(second_user: dict[str, Any]):
 
     app.dependency_overrides[get_current_user] = override_auth
     with TestClient(app) as c:
-        yield c
+        yield _PrefixedTestClient(c)
     app.dependency_overrides.pop(get_current_user, None)
 
 

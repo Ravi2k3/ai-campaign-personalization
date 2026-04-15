@@ -33,18 +33,29 @@ export default function CreateCampaignModal({
         sender_name?: string
         goal?: string
     }>({})
-    const [form, setForm] = useState({
+    const EMPTY_FORM = {
         name: "",
         sender_name: "",
         goal: "",
         max_follow_ups: 3,
         scheduled_start_at: "",
-    })
+    }
+
+    const [form, setForm] = useState(EMPTY_FORM)
 
     // Follow-up delay split into days, hours, minutes
     const [delayDays, setDelayDays] = useState(2)
     const [delayHours, setDelayHours] = useState(0)
     const [delayMinutes, setDelayMinutes] = useState(0)
+
+    const resetAndClose = () => {
+        setForm(EMPTY_FORM)
+        setDelayDays(2)
+        setDelayHours(0)
+        setDelayMinutes(0)
+        setFieldErrors({})
+        onClose()
+    }
 
     // Compute total minutes from D/H/M
     const followUpDelayMinutes = useMemo(() => {
@@ -166,7 +177,7 @@ export default function CreateCampaignModal({
                 ...form,
                 follow_up_delay_minutes: followUpDelayMinutes
             })
-            setForm({ name: "", sender_name: "", goal: "", max_follow_ups: 3, scheduled_start_at: "" })
+            setForm(EMPTY_FORM)
             setDelayDays(2)
             setDelayHours(0)
             setDelayMinutes(0)
@@ -184,7 +195,7 @@ export default function CreateCampaignModal({
     const hasEmptyFields = !form.name.trim() || !form.sender_name.trim() || !form.goal.trim()
 
     return (
-        <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <Dialog open={open} onOpenChange={(isOpen) => !isOpen && resetAndClose()}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create Campaign</DialogTitle>
@@ -203,9 +214,11 @@ export default function CreateCampaignModal({
                                 value={form.name}
                                 onChange={handleInputChange}
                                 placeholder="Q1 Outreach"
+                                aria-invalid={!!fieldErrors.name}
+                                aria-describedby={fieldErrors.name ? "name-error" : undefined}
                                 className={`h-9 text-sm ${fieldErrors.name ? "border-destructive" : ""}`}
                             />
-                            {fieldErrors.name && <p className="text-[11px] text-destructive">{fieldErrors.name}</p>}
+                            {fieldErrors.name && <p id="name-error" className="text-[11px] text-destructive">{fieldErrors.name}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <Label htmlFor="sender_name" className="text-[12px]">Sender Name</Label>
@@ -214,9 +227,11 @@ export default function CreateCampaignModal({
                                 value={form.sender_name}
                                 onChange={handleInputChange}
                                 placeholder="John Doe"
+                                aria-invalid={!!fieldErrors.sender_name}
+                                aria-describedby={fieldErrors.sender_name ? "sender_name-error" : undefined}
                                 className={`h-9 text-sm ${fieldErrors.sender_name ? "border-destructive" : ""}`}
                             />
-                            {fieldErrors.sender_name && <p className="text-[11px] text-destructive">{fieldErrors.sender_name}</p>}
+                            {fieldErrors.sender_name && <p id="sender_name-error" className="text-[11px] text-destructive">{fieldErrors.sender_name}</p>}
                         </div>
                     </div>
                     <p className="text-[11px] text-muted-foreground -mt-2">Emails will be sent from your Google account.</p>
@@ -313,10 +328,12 @@ export default function CreateCampaignModal({
                             id="goal"
                             value={form.goal}
                             onChange={handleInputChange}
+                            aria-invalid={!!fieldErrors.goal}
+                            aria-describedby={fieldErrors.goal ? "goal-error" : undefined}
                             className={`flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.goal ? "border-destructive" : ""}`}
                             placeholder="We help [Marketing Agencies] solve [Lead Quality Issues] by providing [AI Scraping]. Goal: get them to [Book a 15 min call]."
                         />
-                        {fieldErrors.goal && <p className="text-[11px] text-destructive">{fieldErrors.goal}</p>}
+                        {fieldErrors.goal && <p id="goal-error" className="text-[11px] text-destructive">{fieldErrors.goal}</p>}
                     </div>
 
                     {/* ── Schedule (optional) ──────────────── */}
@@ -335,7 +352,7 @@ export default function CreateCampaignModal({
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>
+                        <Button type="button" variant="outline" onClick={resetAndClose}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={loading || hasFieldErrors || hasEmptyFields}>

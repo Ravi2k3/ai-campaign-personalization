@@ -3,6 +3,7 @@
 import base64
 import email
 import imaplib
+import re
 from datetime import datetime, timedelta, timezone
 from email.header import decode_header
 from typing import Optional
@@ -10,6 +11,7 @@ from typing import Optional
 from ..auth.tokens import get_valid_access_token
 from ..db.engine import get_cursor
 from ..logger import logger
+from .replies import extract_reply_html, extract_reply_text
 
 GMAIL_IMAP_HOST = "imap.gmail.com"
 GMAIL_IMAP_PORT = 993
@@ -32,6 +34,56 @@ def _decode_header_value(raw: Optional[str]) -> str:
         else:
             parts.append(part)
     return " ".join(parts)
+
+
+def _extract_clean_body(msg: email.message.Message) -> str:
+    """
+    Walk a parsed MIME message and return a clean reply body with quotes stripped.
+    Prefers text/plain; falls back to stripping HTML if only text/html is available.
+    """
+    plain_text: Optional[str] = None
+    html_text: Optional[str] = None
+
+    if msg.is_multipart():
+        for part in msg.walk():
+            ctype = part.get_content_type()
+            disposition = str(part.get("Content-Disposition", "")).lower()
+            if "attachment" in disposition:
+                continue
+            payload = part.get_payload(decode=True)
+            if not payload:
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            try:
+                decoded = payload.decode(charset, errors="replace")
+            except (LookupError, UnicodeDecodeError):
+                decoded = payload.decode("utf-8", errors="replace")
+            if ctype == "text/plain" and plain_text is None:
+                plain_text = decoded
+            elif ctype == "text/html" and html_text is None:
+                html_text = decoded
+    else:
+        payload = msg.get_payload(decode=True)
+        if payload:
+            charset = msg.get_content_charset() or "utf-8"
+            try:
+                decoded = payload.decode(charset, errors="replace")
+            except (LookupError, UnicodeDecodeError):
+                decoded = payload.decode("utf-8", errors="replace")
+            if msg.get_content_type() == "text/html":
+                html_text = decoded
+            else:
+                plain_text = decoded
+
+    if plain_text:
+        return extract_reply_text(plain_text)
+    if html_text:
+        # Strip HTML tags after removing quoted sections
+        cleaned_html = extract_reply_html(html_text)
+        stripped = re.sub(r"<[^>]+>", "", cleaned_html)
+        stripped = re.sub(r"\s+\n", "\n", stripped)
+        return stripped.strip()
+    return ""
 
 
 def _get_lead_emails_for_user(user_id: str) -> dict[str, list[dict]]:
@@ -160,24 +212,21 @@ def check_replies_for_user(user_id: str, user_email: str) -> list[dict]:
                     }
 
         for num in msg_id_list:
-            status, data = imap.fetch(num, "(RFC822.HEADER BODY[TEXT])")
+            status, data = imap.fetch(num, "(RFC822)")
             if status != "OK" or not data:
                 continue
 
-            # Parse headers
-            header_data = None
-            body_data = b""
+            # RFC822 returns the full raw message bytes in the first tuple element
+            raw_message: Optional[bytes] = None
             for part in data:
-                if isinstance(part, tuple):
-                    if b"HEADER" in part[0]:
-                        header_data = part[1]
-                    elif b"TEXT" in part[0]:
-                        body_data = part[1]
+                if isinstance(part, tuple) and len(part) >= 2:
+                    raw_message = part[1]
+                    break
 
-            if not header_data:
+            if not raw_message:
                 continue
 
-            msg = email.message_from_bytes(header_data)
+            msg = email.message_from_bytes(raw_message)
             in_reply_to = msg.get("In-Reply-To", "").strip()
             references = msg.get("References", "").strip()
             from_addr = email.utils.parseaddr(msg.get("From", ""))[1].lower()
@@ -202,7 +251,7 @@ def check_replies_for_user(user_id: str, user_email: str) -> list[dict]:
                 }
 
             if matched_lead:
-                body_text = body_data.decode("utf-8", errors="replace") if body_data else ""
+                body_text = _extract_clean_body(msg)
                 replies.append({
                     "lead_id": matched_lead["lead_id"],
                     "subject": subject,

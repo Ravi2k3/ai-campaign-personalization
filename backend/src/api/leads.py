@@ -1,6 +1,7 @@
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException
+from psycopg2.extras import execute_values
 
 from ..auth import get_current_user
 from ..db import get_cursor
@@ -109,7 +110,6 @@ async def bulk_create_leads(
     if not data.leads:
         raise HTTPException(status_code=400, detail="No leads provided")
 
-    created_leads = []
     with get_cursor(commit=True) as cur:
         campaign = _verify_campaign_ownership(cur, campaign_id, user["id"])
         if campaign["status"] == "completed":
@@ -122,30 +122,36 @@ async def bulk_create_leads(
         existing_emails = {row["email"] for row in cur.fetchall()}
         seen_emails: set[str] = set()
 
+        rows_to_insert: list[tuple[Any, ...]] = []
         for lead in data.leads:
             if lead.email in existing_emails or lead.email in seen_emails:
                 continue
-
             seen_emails.add(lead.email)
+            rows_to_insert.append((
+                campaign_id,
+                lead.email,
+                lead.first_name,
+                lead.last_name,
+                lead.company,
+                lead.title,
+                lead.notes,
+            ))
 
-            cur.execute(
-                """
-                INSERT INTO leads (campaign_id, email, first_name, last_name, company, title, notes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                RETURNING id, campaign_id, email, first_name, last_name, company,
-                          title, notes, status, has_replied, current_sequence, created_at
-                """,
-                (
-                    campaign_id,
-                    lead.email,
-                    lead.first_name,
-                    lead.last_name,
-                    lead.company,
-                    lead.title,
-                    lead.notes,
-                ),
-            )
-            created_leads.append(cur.fetchone())
+        if not rows_to_insert:
+            return []
+
+        # Single round-trip multi-row INSERT, returns all created rows
+        created_leads = execute_values(
+            cur,
+            """
+            INSERT INTO leads (campaign_id, email, first_name, last_name, company, title, notes)
+            VALUES %s
+            RETURNING id, campaign_id, email, first_name, last_name, company,
+                      title, notes, status, has_replied, current_sequence, created_at
+            """,
+            rows_to_insert,
+            fetch=True,
+        )
 
     return created_leads
 
