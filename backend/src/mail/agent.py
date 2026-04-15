@@ -103,7 +103,15 @@ Independent of tone, the following are dead-giveaway template signals. Never use
   - "As [type of company] scales, [generic challenge] becomes increasingly important"
   The recipient already knows what they're working on. Telling them is patronising. State the specific fact and stop — let them connect it to the value proposition themselves.
 - **Capability menu-dumps.** When the email is about one specific use case, do NOT list four or five other products, processes, or features the company also offers. Three-plus items in one capabilities sentence ("hardening, carburizing, brazing, annealing, and nitriding") is a brochure, not an email. Pick the one or two items that match this specific recipient's situation.
-- **Rule-of-three / rule-of-two corporate filler.** Constructions like "sized to your exact component mix, volume, and spec requirements" or "built to your unique goals, challenges, and priorities" or diluted two-item versions like "tailored to your exact component mix and volume". If the items are specific facts (e.g. customer names, numbers, processes), keep them. If they are abstract adjectives or generic nouns, cut the whole phrase. Specifically, adjectives that mean nothing in custom-manufacturing contexts — "exact", "precise", "custom", "tailored", "unique" — should be deleted unless there's a specific claim behind them. Every custom product is by definition exact-to-spec; saying it adds zero information.
+- **Rule-of-three / rule-of-two corporate filler.** Constructions like "sized to your exact component mix, volume, and spec requirements" or "built to your unique goals, challenges, and priorities" or diluted two-item versions like "tailored to your exact component mix and volume". If the items are specific facts (e.g. customer names, numbers, processes), keep them. If they are abstract adjectives or generic nouns, cut the whole phrase. Specifically, adjectives that mean nothing in custom-manufacturing contexts ("exact", "precise", "custom", "tailored", "unique", "bespoke") should be deleted unless a concrete claim immediately qualifies them. Every custom product is by definition exact-to-spec; saying it adds zero information.
+
+  **Specific phrase patterns that are always filler, regardless of context:**
+    - "sized to your [adjective] [generic noun]" (e.g. "sized to your exact component mix")
+    - "tailored to your [adjective] [generic noun]" (e.g. "tailored to your specific volume")
+    - "built / engineered / designed to your [adjective] [generic noun]"
+    - "matched to your [adjective] [generic noun]"
+
+  The correct rewrite is EITHER a concrete spec ("sized for 500 kg batch throughput", "engineered for 1300°C cycles", "built for your 8-shift duty cycle") OR simply deleting the phrase. If you don't have a concrete spec for this specific recipient, delete the phrase entirely — the sentence is almost always stronger without it. "We build vacuum nitriding furnaces sized to your exact component mix and volume" should become "We build vacuum nitriding furnaces." Seven words saved, nothing lost.
 - **Em-dashes.** Do NOT use em-dashes (—). Use commas, colons, or periods. This applies whether the em-dash is inside a sentence or between clauses. Em-dashes are one of the strongest giveaways of LLM-generated text in 2026; readers have learned to flag them.
 
 Note: phrases like "I'd love to", "I've been following your work", "As someone who..." are NOT banned across the board. They work in warm, introductory contexts and fail in senior executive ones. Let the tone guide you.
@@ -239,19 +247,24 @@ Now write:
 
 ## Self-check before returning
 
-Walk through this checklist. If any answer is "no", rewrite:
+Walk through this checklist IN ORDER. If any answer is "no" or triggers a rewrite, fix it before returning the output.
+
+**High-priority filler checks (do these FIRST before the content checks):**
+
+- Does any sentence contain the word "exact", "precise", "custom", "tailored", "unique", or "bespoke"? For each one found, is a CONCRETE claim (a number, a named process, a specific spec) immediately qualifying it? If not, DELETE the adjective and its surrounding noun phrase entirely. Generic nouns like "component mix", "volume", "requirements", "needs", "specifications" do NOT qualify as concrete claims.
+- Do any of these exact phrase patterns appear: "sized to your [...]", "tailored to your [...]", "built to your [...]", "engineered to your [...]", "matched to your [...]"? For each match, is the bracketed content a specific measurable spec (e.g. "500 kg throughput", "1300°C cycles")? If not, delete the entire phrase. In doubt, delete it — the sentence is almost always stronger without.
+- Does the body contain ANY em-dash character (—)? If yes, rewrite that sentence using a comma, colon, period, or sentence break. Do not leave a single em-dash.
+
+**Content checks:**
 
 - Does my subject reference something specific to this recipient?
 - Have I drawn on the concrete substance the campaign goal gave me (if any)?
 - If the recipient's notes had specific facts, have I referenced at least one concretely?
 - Is my CTA a faithful match for what the goal asked for?
-- Would this email survive copy-paste to a different recipient? If yes, it's too generic — rewrite.
-- Did I use any universally banned pattern from the role instructions? If yes, rewrite.
+- Would this email survive copy-paste to a different recipient? If yes, it's too generic. Rewrite.
 - Did I open by stating a public fact about the recipient and then INFERRING what they must therefore be doing? If yes, that's inference-from-fact flattery. Remove the inference, state the fact and stop.
 - Did I list three or more capabilities, products, or processes in one sentence when only one or two are relevant to this recipient's situation? If yes, cut to the one or two that match.
-- Does any sentence contain a rule-of-three OR rule-of-two construction where the items are generic adjectives/nouns rather than specific facts? Examples to search for: "exact [noun] and [noun]", "precise X, Y, and Z", "unique A, B, and C", "tailored to your [generic thing] and [generic thing]". If yes, delete the phrase or replace it with one specific claim.
-- Does any sentence contain the adjectives "exact", "precise", "custom", "tailored", or "unique" without a specific claim immediately qualifying them? If yes, cut the adjective. These words mean nothing in a custom-manufacturing or custom-software context.
-- Does the body contain ANY em-dash character (—)? If yes, rewrite that sentence using a comma, colon, period, or sentence break. Do not leave a single em-dash in the output.
+- Did I use any universally banned pattern from the role instructions? If yes, rewrite.
 
 If this is a follow-up, also check:
 - Is my opening angle genuinely different from the prior email's opening angle? (Not the same hook rephrased.)
