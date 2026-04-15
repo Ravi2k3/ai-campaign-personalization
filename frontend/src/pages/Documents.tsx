@@ -9,9 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
     Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import {
-    FileText, Upload, Trash2, Eye, AlertCircle, Loader2,
-} from "lucide-react"
+import { FileText, Upload, Trash2, Eye, AlertCircle } from "lucide-react"
 
 type DocumentSummary = {
     id: string
@@ -49,7 +47,6 @@ export default function Documents() {
 
     const [docs, setDocs] = useState<DocumentSummary[]>([])
     const [loading, setLoading] = useState(true)
-    const [uploading, setUploading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
 
@@ -73,7 +70,7 @@ export default function Documents() {
 
     useEffect(() => { fetchDocs() }, [])
 
-    const uploadFile = async (file: File) => {
+    const uploadFile = (file: File) => {
         const ext = "." + (file.name.split(".").pop() || "").toLowerCase()
         if (!ACCEPT.includes(ext)) {
             toast.error(`Unsupported file type. Allowed: ${ACCEPT}.`)
@@ -84,8 +81,11 @@ export default function Documents() {
             return
         }
 
-        setUploading(true)
-        try {
+        // Kick off the upload and immediately hand it to sonner's toast.promise.
+        // sonner's Toaster is mounted at the app root, so the loading +
+        // success/error notification follows the user across route changes —
+        // they can navigate away and still see the final toast when it lands.
+        const uploadPromise = (async () => {
             const form = new FormData()
             form.append("file", file)
             const resp = await fetch(`${API_URL}/documents`, {
@@ -103,19 +103,24 @@ export default function Documents() {
                 } catch { /* ignore */ }
                 throw new Error(detail)
             }
-            toast.success("Document processed")
-            await fetchDocs()
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Upload failed")
-        } finally {
-            setUploading(false)
-        }
+            return await resp.json()
+        })()
+
+        toast.promise(uploadPromise, {
+            loading: `Parsing ${file.name}...`,
+            success: "Document processed",
+            error: (err) => err instanceof Error ? err.message : "Upload failed",
+        })
+
+        // If the user stays on this page, refresh the library when it lands.
+        // If they navigate away, the refresh is a no-op on the unmounted
+        // component and the library will fetch fresh on next mount.
+        uploadPromise.then(fetchDocs).catch(() => { /* toast already handled */ })
     }
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(false)
-        if (uploading) return
         const file = e.dataTransfer.files?.[0]
         if (file) uploadFile(file)
     }
@@ -170,27 +175,16 @@ export default function Documents() {
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
                     className={`block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
-                        uploading
-                            ? "border-muted/50 cursor-not-allowed opacity-60"
-                            : isDragging
-                                ? "border-primary bg-primary/5"
-                                : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                        isDragging
+                            ? "border-primary bg-primary/5"
+                            : "border-muted-foreground/25 hover:border-muted-foreground/50"
                     }`}
                 >
-                    {uploading ? (
-                        <div className="flex items-center justify-center gap-2">
-                            <Loader2 size={16} className="animate-spin text-muted-foreground" />
-                            <p className="text-[13px] text-muted-foreground">Parsing and summarizing...</p>
-                        </div>
-                    ) : (
-                        <>
-                            <Upload size={22} className={`mx-auto mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
-                            <p className="text-[13px] text-muted-foreground">Drag &amp; drop or click to upload</p>
-                            <p className="text-[11px] text-muted-foreground/70 mt-1">
-                                PDF, DOCX, PPTX, TXT, MD · Max {MAX_MB} MB
-                            </p>
-                        </>
-                    )}
+                    <Upload size={22} className={`mx-auto mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
+                    <p className="text-[13px] text-muted-foreground">Drag &amp; drop or click to upload</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">
+                        PDF, DOCX, PPTX, TXT, MD · Max {MAX_MB} MB · Parsing takes ~30-60s
+                    </p>
                 </label>
                 <input
                     ref={fileInputRef}
@@ -199,7 +193,6 @@ export default function Documents() {
                     accept={ACCEPT}
                     className="hidden"
                     onChange={handleInputChange}
-                    disabled={uploading}
                 />
 
                 {error && (
