@@ -305,6 +305,7 @@ def check_replies_for_user(user_id: str, user_email: str) -> list[dict]:
                     "subject": subject,
                     "body": body_text,
                     "gmail_message_id": gmail_message_id,
+                    "received_at": reply_date,
                 })
 
     except imaplib.IMAP4.error as e:

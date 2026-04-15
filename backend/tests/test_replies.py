@@ -1,5 +1,7 @@
 """Tests for reply processing: HTML/text extraction and mark_lead_replied."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from src.mail.replies import extract_reply_html, extract_reply_text, mark_lead_replied
@@ -105,3 +107,52 @@ class TestMarkLeadReplied:
                 (lead["id"],),
             )
             assert cur.fetchone()["count"] == 1
+
+    def test_stores_received_at_from_header(self):
+        """
+        When the caller passes a parsed Date header through, sent_at should
+        reflect the actual reply time, not the moment we polled IMAP.
+        """
+        user = insert_user()
+        campaign = insert_campaign(user_id=user["id"])
+        lead = insert_lead(campaign_id=campaign["id"], has_replied=False)
+
+        real_reply_time = datetime(2026, 4, 14, 14, 30, 0, tzinfo=timezone.utc)
+        mark_lead_replied(
+            lead_id=lead["id"],
+            subject="Re: Hi",
+            reply_content="Thanks",
+            received_at=real_reply_time,
+        )
+
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT sent_at FROM emails WHERE lead_id = %s AND status = 'received'",
+                (lead["id"],),
+            )
+            row = cur.fetchone()
+            # Compare as UTC timestamps (Postgres returns with tz)
+            assert row["sent_at"].astimezone(timezone.utc) == real_reply_time
+
+    def test_falls_back_to_now_when_received_at_missing(self):
+        """If the Date header couldn't be parsed, sent_at should default to NOW()."""
+        user = insert_user()
+        campaign = insert_campaign(user_id=user["id"])
+        lead = insert_lead(campaign_id=campaign["id"], has_replied=False)
+
+        before = datetime.now(timezone.utc)
+        mark_lead_replied(
+            lead_id=lead["id"],
+            subject="Re: Hi",
+            reply_content="Thanks",
+            received_at=None,
+        )
+        after = datetime.now(timezone.utc)
+
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT sent_at FROM emails WHERE lead_id = %s AND status = 'received'",
+                (lead["id"],),
+            )
+            stored = cur.fetchone()["sent_at"].astimezone(timezone.utc)
+            assert before - timedelta(seconds=1) <= stored <= after + timedelta(seconds=1)

@@ -604,6 +604,7 @@ def _targeted_reply_check(
                                 subject=msg.get("Subject", ""),
                                 reply_content="(detected pre-send)",
                                 gmail_message_id=msg.get("Message-ID", ""),
+                                received_at=reply_date,
                             )
         finally:
             imap_conn.logout()
@@ -976,6 +977,7 @@ async def check_replies_job() -> None:
                         subject=reply.get("subject", ""),
                         reply_content=reply_body or "(Reply content unavailable)",
                         gmail_message_id=reply.get("gmail_message_id"),
+                        received_at=reply.get("received_at"),
                     )
 
                 if replies:

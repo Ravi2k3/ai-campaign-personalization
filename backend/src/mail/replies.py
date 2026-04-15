@@ -1,6 +1,7 @@
 """Shared reply-processing logic used by both IMAP polling and (legacy) webhooks."""
 
 import re
+from datetime import datetime
 from typing import Optional
 
 from ..db.engine import get_cursor
@@ -66,10 +67,17 @@ def mark_lead_replied(
     subject: str,
     reply_content: str,
     gmail_message_id: Optional[str] = None,
+    received_at: Optional[datetime] = None,
 ) -> bool:
     """
     Mark a lead as replied and record the reply in the emails table.
     Idempotent: returns True if the lead was already marked as replied.
+
+    Args:
+        received_at: The reply's actual timestamp (from the email's Date
+            header). Stored as emails.sent_at so the activity timeline
+            reflects when the lead actually replied, not when we polled.
+            Falls back to NOW() if the caller couldn't parse the header.
     """
     try:
         with get_cursor(commit=True) as cur:
@@ -99,9 +107,9 @@ def mark_lead_replied(
             cur.execute(
                 """
                 INSERT INTO emails (lead_id, sequence_number, subject, body, status, message_id, sent_at)
-                VALUES (%s, 0, %s, %s, 'received', %s, NOW())
+                VALUES (%s, 0, %s, %s, 'received', %s, COALESCE(%s, NOW()))
                 """,
-                (lead_id, f"[REPLY] {subject}", reply_content, gmail_message_id),
+                (lead_id, f"[REPLY] {subject}", reply_content, gmail_message_id, received_at),
             )
 
             logger.info(f"Lead {lead_id} marked as replied")
