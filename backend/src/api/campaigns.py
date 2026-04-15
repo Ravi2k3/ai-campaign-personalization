@@ -364,103 +364,106 @@ async def get_campaign_stats(
 ):
     """
     Get campaign statistics including email counts and rate limit status.
+
+    Uses a single query with CTEs to collapse what was 8 sequential DB
+    round-trips into one. On a cross-region DB (200ms RTT) this was the
+    difference between ~1.6s and ~200ms per stats load.
     """
+    stats_query = """
+    WITH
+    camp AS (
+        SELECT max_follow_ups
+        FROM campaigns
+        WHERE id = %(cid)s AND user_id = %(uid)s
+    ),
+    lead_agg AS (
+        SELECT
+            COUNT(*) AS total_leads,
+            COUNT(*) FILTER (WHERE has_replied) AS reply_count,
+            AVG(current_sequence) FILTER (WHERE has_replied) AS avg_sequence_at_reply,
+            COALESCE(SUM(
+                CASE
+                    WHEN status IN ('replied', 'failed') THEN current_sequence
+                    ELSE (SELECT max_follow_ups FROM camp)
+                END
+            ), 0) AS emails_target
+        FROM leads
+        WHERE campaign_id = %(cid)s
+    ),
+    status_counts AS (
+        SELECT jsonb_object_agg(status, cnt) AS leads_by_status
+        FROM (
+            SELECT status, COUNT(*) AS cnt
+            FROM leads
+            WHERE campaign_id = %(cid)s
+            GROUP BY status
+        ) s
+    ),
+    email_agg AS (
+        SELECT
+            COUNT(*) FILTER (WHERE e.status IN ('sent', 'failed')) AS emails_sent,
+            COUNT(*) FILTER (
+                WHERE e.status = 'sent'
+                  AND e.sent_at >= NOW() - make_interval(mins => %(win)s)
+            ) AS emails_in_window,
+            MIN(e.sent_at) FILTER (
+                WHERE e.status = 'sent'
+                  AND e.sent_at >= NOW() - make_interval(mins => %(win)s)
+            ) AS oldest_in_window
+        FROM emails e
+        JOIN leads l ON e.lead_id = l.id
+        WHERE l.campaign_id = %(cid)s
+    )
+    SELECT
+        camp.max_follow_ups,
+        la.total_leads,
+        la.reply_count,
+        la.avg_sequence_at_reply,
+        la.emails_target,
+        COALESCE(sc.leads_by_status, '{}'::jsonb) AS leads_by_status,
+        COALESCE(ea.emails_sent, 0) AS emails_sent,
+        COALESCE(ea.emails_in_window, 0) AS emails_in_window,
+        ea.oldest_in_window
+    FROM camp
+    LEFT JOIN lead_agg la ON true
+    LEFT JOIN status_counts sc ON true
+    LEFT JOIN email_agg ea ON true
+    """
+
     with get_cursor() as cur:
         cur.execute(
-            "SELECT max_follow_ups FROM campaigns WHERE id = %s AND user_id = %s",
-            (campaign_id, user["id"]),
+            stats_query,
+            {
+                "cid": campaign_id,
+                "uid": user["id"],
+                "win": RATE_LIMIT_WINDOW_MINUTES,
+            },
         )
-        campaign = cur.fetchone()
+        row = cur.fetchone()
 
-        if not campaign:
-            raise HTTPException(status_code=404, detail="Campaign not found")
+    # `camp` CTE returns zero rows if campaign doesn't exist or isn't owned
+    # by this user, which makes the whole SELECT return nothing.
+    if not row:
+        raise HTTPException(status_code=404, detail="Campaign not found")
 
-        max_follow_ups = campaign["max_follow_ups"]
-
-        # Total sent emails
-        cur.execute(
-            """
-            SELECT COUNT(*) as count
-            FROM emails e
-            JOIN leads l ON e.lead_id = l.id
-            WHERE l.campaign_id = %s AND e.status IN ('sent', 'failed')
-            """,
-            (campaign_id,),
-        )
-        emails_sent = cur.fetchone()["count"]
-
-        # Target emails based on lead status
-        cur.execute(
-            """
-            SELECT
-                COALESCE(SUM(
-                    CASE
-                        WHEN status IN ('replied', 'failed') THEN current_sequence
-                        ELSE %s
-                    END
-                ), 0) as target
-            FROM leads
-            WHERE campaign_id = %s
-            """,
-            (max_follow_ups, campaign_id),
-        )
-        emails_target = cur.fetchone()["target"]
-
-        # Emails sent in rate limit window
-        cur.execute(
-            """
-            SELECT
-                COUNT(*) as count,
-                MIN(e.sent_at) as oldest_sent_at
-            FROM emails e
-            JOIN leads l ON e.lead_id = l.id
-            WHERE l.campaign_id = %s
-              AND e.status = 'sent'
-              AND e.sent_at >= NOW() - INTERVAL '%s minutes'
-            """,
-            (campaign_id, RATE_LIMIT_WINDOW_MINUTES),
-        )
-        window_result = cur.fetchone()
-        emails_in_window = window_result["count"]
-        oldest_in_window = window_result["oldest_sent_at"]
-
-        # Analytics: lead counts and reply metrics
-        cur.execute(
-            "SELECT COUNT(*) as count FROM leads WHERE campaign_id = %s",
-            (campaign_id,),
-        )
-        total_leads = cur.fetchone()["count"]
-
-        cur.execute(
-            "SELECT COUNT(*) as count FROM leads WHERE campaign_id = %s AND has_replied = true",
-            (campaign_id,),
-        )
-        reply_count = cur.fetchone()["count"]
-
-        cur.execute(
-            "SELECT status, COUNT(*) as count FROM leads WHERE campaign_id = %s GROUP BY status",
-            (campaign_id,),
-        )
-        leads_by_status = {row["status"]: row["count"] for row in cur.fetchall()}
-
-        cur.execute(
-            "SELECT AVG(current_sequence) as avg_seq FROM leads WHERE campaign_id = %s AND has_replied = true",
-            (campaign_id,),
-        )
-        avg_row = cur.fetchone()
-        avg_sequence_at_reply = float(avg_row["avg_seq"]) if avg_row and avg_row["avg_seq"] else None
+    total_leads = row["total_leads"] or 0
+    reply_count = row["reply_count"] or 0
+    emails_in_window = row["emails_in_window"]
+    oldest_in_window = row["oldest_in_window"]
 
     rate_limit_remaining = max(0, CAMPAIGN_EMAIL_RATE_LIMIT - emails_in_window)
-
     rate_limit_resets_at = None
     if oldest_in_window and rate_limit_remaining == 0:
         rate_limit_resets_at = oldest_in_window + timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
 
     reply_rate = round((reply_count / total_leads) * 100, 1) if total_leads > 0 else 0.0
+    avg_sequence_at_reply = (
+        float(row["avg_sequence_at_reply"]) if row["avg_sequence_at_reply"] is not None else None
+    )
 
     return {
-        "emails_sent": emails_sent,
-        "emails_target": int(emails_target),
+        "emails_sent": row["emails_sent"],
+        "emails_target": int(row["emails_target"] or 0),
         "emails_in_window": emails_in_window,
         "rate_limit": CAMPAIGN_EMAIL_RATE_LIMIT,
         "rate_limit_window_minutes": RATE_LIMIT_WINDOW_MINUTES,
@@ -471,6 +474,6 @@ async def get_campaign_stats(
         "total_leads": total_leads,
         "reply_count": reply_count,
         "reply_rate": reply_rate,
-        "leads_by_status": leads_by_status,
+        "leads_by_status": row["leads_by_status"] or {},
         "avg_sequence_at_reply": avg_sequence_at_reply,
     }
