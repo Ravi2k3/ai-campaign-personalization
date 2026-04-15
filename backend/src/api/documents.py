@@ -1,8 +1,19 @@
-"""Endpoints for uploading a product-context document to a campaign."""
+"""
+Account-wide documents library and campaign attachment endpoints.
 
-from typing import Any
+Flow:
+- POST /documents             upload + parse + summarize. File is discarded.
+- GET  /documents             list the caller's library.
+- GET  /documents/{id}        fetch one (with brief, for preview).
+- DELETE /documents/{id}      remove (cascades to attached campaigns).
+- PUT  /campaigns/{id}/documents  attach 0..MAX_DOCUMENTS_PER_CAMPAIGN documents.
+"""
+
+import os as _os
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from ..auth import get_current_user
 from ..db import get_cursor
@@ -13,49 +24,48 @@ from ..documents import (
     BriefSummarizationError,
 )
 from ..logger import logger
-from .models import ProductDocumentResponse
 
-router = APIRouter(prefix="/campaigns/{campaign_id}/document", tags=["documents"])
+# Hard cap to keep prompts tight and control LLM input cost.
+MAX_DOCUMENTS_PER_CAMPAIGN = 2
 
-# Accept the formats LlamaParse handles reliably. Extend cautiously.
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".txt", ".md"}
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 
-
-def _verify_mutable_campaign(cur: Any, campaign_id: str, user_id: str) -> dict[str, Any]:
-    """Ensure the campaign exists, is owned by the caller, and is still editable."""
-    cur.execute(
-        "SELECT id, status FROM campaigns WHERE id = %s AND user_id = %s",
-        (campaign_id, user_id),
-    )
-    row = cur.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    if row["status"] not in ("draft", "paused"):
-        raise HTTPException(
-            status_code=400,
-            detail="Product documents can only be modified on draft or paused campaigns.",
-        )
-    return row
+library_router = APIRouter(prefix="/documents", tags=["documents"])
+attach_router = APIRouter(prefix="/campaigns/{campaign_id}/documents", tags=["documents"])
 
 
-@router.post("", response_model=ProductDocumentResponse)
+# ── Response schemas ────────────────────────────────────────────────────
+
+class DocumentSummary(BaseModel):
+    id: str
+    name: str
+    size_bytes: Optional[int] = None
+    extension: Optional[str] = None
+    created_at: Any
+    updated_at: Any
+
+
+class DocumentDetail(DocumentSummary):
+    brief: str
+    word_count: int
+
+
+class CampaignDocumentsUpdate(BaseModel):
+    document_ids: List[str]
+
+
+# ── Library CRUD ────────────────────────────────────────────────────────
+
+@library_router.post("", response_model=DocumentDetail)
 async def upload_document(
-    campaign_id: str,
     file: UploadFile = File(...),
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    """
-    Upload a product-context document (PDF / DOCX / PPTX / TXT / MD).
-    The file is parsed via LlamaParse, summarised into a 300-500 word
-    product brief, and stored on the campaign. The original file is not
-    persisted.
-    """
-    # Validate file name and extension
+    """Upload, parse via LlamaParse, summarise, save to user's library."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
 
-    import os as _os
     ext = _os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -63,7 +73,6 @@ async def upload_document(
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}.",
         )
 
-    # Read and validate size
     body = await file.read()
     if len(body) == 0:
         raise HTTPException(status_code=400, detail="File is empty")
@@ -73,11 +82,6 @@ async def upload_document(
             detail=f"File too large. Max size is {MAX_FILE_BYTES // (1024 * 1024)} MB.",
         )
 
-    # Ownership + mutability check before incurring any upstream cost
-    with get_cursor() as cur:
-        _verify_mutable_campaign(cur, campaign_id, user["id"])
-
-    # Parse the document via LlamaParse
     try:
         markdown = await parse_document(body, file.filename)
     except DocumentParseError as e:
@@ -86,7 +90,6 @@ async def upload_document(
         logger.error(f"Unexpected parse error for {file.filename}: {e}")
         raise HTTPException(status_code=502, detail="Document parsing service is unavailable.")
 
-    # Summarize to product brief
     try:
         brief = await summarize_to_brief(markdown)
     except BriefSummarizationError as e:
@@ -95,45 +98,182 @@ async def upload_document(
         logger.error(f"Unexpected summarization error: {e}")
         raise HTTPException(status_code=502, detail="Summarization service is unavailable.")
 
-    # Persist brief on the campaign. Re-check mutability inside the write
-    # transaction to guard against concurrent status changes.
     with get_cursor(commit=True) as cur:
-        _verify_mutable_campaign(cur, campaign_id, user["id"])
         cur.execute(
             """
-            UPDATE campaigns
-            SET product_context = %s,
-                product_document_name = %s,
-                updated_at = NOW()
-            WHERE id = %s AND user_id = %s
+            INSERT INTO documents (user_id, name, brief, size_bytes, extension)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id, name, size_bytes, extension, brief, created_at, updated_at
             """,
-            (brief, file.filename, campaign_id, user["id"]),
+            (user["id"], file.filename, brief, len(body), ext),
         )
+        row = cur.fetchone()
 
-    word_count = len(brief.split())
-    return ProductDocumentResponse(
-        document_name=file.filename,
-        brief=brief,
-        word_count=word_count,
+    return DocumentDetail(
+        id=str(row["id"]),
+        name=row["name"],
+        size_bytes=row["size_bytes"],
+        extension=row["extension"],
+        brief=row["brief"],
+        word_count=len(row["brief"].split()),
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
     )
 
 
-@router.delete("")
-async def delete_document(
-    campaign_id: str,
-    user: dict[str, Any] = Depends(get_current_user),
-):
-    """Clear the product document and brief from the campaign."""
-    with get_cursor(commit=True) as cur:
-        _verify_mutable_campaign(cur, campaign_id, user["id"])
+@library_router.get("", response_model=List[DocumentSummary])
+async def list_documents(user: dict[str, Any] = Depends(get_current_user)):
+    with get_cursor() as cur:
         cur.execute(
             """
-            UPDATE campaigns
-            SET product_context = NULL,
-                product_document_name = NULL,
-                updated_at = NOW()
+            SELECT id, name, size_bytes, extension, created_at, updated_at
+            FROM documents
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            """,
+            (user["id"],),
+        )
+        rows = cur.fetchall()
+    return [
+        DocumentSummary(
+            id=str(r["id"]),
+            name=r["name"],
+            size_bytes=r["size_bytes"],
+            extension=r["extension"],
+            created_at=r["created_at"],
+            updated_at=r["updated_at"],
+        )
+        for r in rows
+    ]
+
+
+@library_router.get("/{document_id}", response_model=DocumentDetail)
+async def get_document(
+    document_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, name, brief, size_bytes, extension, created_at, updated_at
+            FROM documents
             WHERE id = %s AND user_id = %s
             """,
+            (document_id, user["id"]),
+        )
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return DocumentDetail(
+        id=str(row["id"]),
+        name=row["name"],
+        brief=row["brief"],
+        size_bytes=row["size_bytes"],
+        extension=row["extension"],
+        word_count=len(row["brief"].split()),
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
+
+@library_router.delete("/{document_id}")
+async def delete_document(
+    document_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Remove a document from the library. Cascades to campaign_documents."""
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "DELETE FROM documents WHERE id = %s AND user_id = %s RETURNING id",
+            (document_id, user["id"]),
+        )
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Document not found")
+    return {"message": "Document deleted"}
+
+
+# ── Campaign attachment ─────────────────────────────────────────────────
+
+@attach_router.put("", response_model=List[DocumentSummary])
+async def set_campaign_documents(
+    campaign_id: str,
+    payload: CampaignDocumentsUpdate,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Replace the set of documents attached to this campaign. Caps at
+    MAX_DOCUMENTS_PER_CAMPAIGN. All document_ids must belong to the caller.
+    """
+    if len(payload.document_ids) > MAX_DOCUMENTS_PER_CAMPAIGN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A campaign can have at most {MAX_DOCUMENTS_PER_CAMPAIGN} documents attached.",
+        )
+
+    # De-duplicate client-supplied IDs
+    doc_ids = list(dict.fromkeys(payload.document_ids))
+
+    with get_cursor(commit=True) as cur:
+        # Campaign ownership + mutability
+        cur.execute(
+            "SELECT status FROM campaigns WHERE id = %s AND user_id = %s",
             (campaign_id, user["id"]),
         )
-    return {"message": "Document cleared"}
+        camp = cur.fetchone()
+        if not camp:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if camp["status"] not in ("draft", "paused"):
+            raise HTTPException(
+                status_code=400,
+                detail="Attached documents can only be changed on draft or paused campaigns.",
+            )
+
+        # Verify all doc_ids belong to this user, in one query
+        if doc_ids:
+            cur.execute(
+                "SELECT id FROM documents WHERE id = ANY(%s::uuid[]) AND user_id = %s",
+                (doc_ids, user["id"]),
+            )
+            found = {str(r["id"]) for r in cur.fetchall()}
+            missing = [d for d in doc_ids if d not in found]
+            if missing:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Documents not found in your library: {', '.join(missing)}",
+                )
+
+        # Replace attachments atomically
+        cur.execute(
+            "DELETE FROM campaign_documents WHERE campaign_id = %s",
+            (campaign_id,),
+        )
+        for doc_id in doc_ids:
+            cur.execute(
+                "INSERT INTO campaign_documents (campaign_id, document_id) VALUES (%s, %s)",
+                (campaign_id, doc_id),
+            )
+
+        # Return the attached documents in insertion order
+        cur.execute(
+            """
+            SELECT d.id, d.name, d.size_bytes, d.extension, d.created_at, d.updated_at
+            FROM campaign_documents cd
+            JOIN documents d ON cd.document_id = d.id
+            WHERE cd.campaign_id = %s
+            ORDER BY cd.created_at ASC
+            """,
+            (campaign_id,),
+        )
+        rows = cur.fetchall()
+
+    return [
+        DocumentSummary(
+            id=str(r["id"]),
+            name=r["name"],
+            size_bytes=r["size_bytes"],
+            extension=r["extension"],
+            created_at=r["created_at"],
+            updated_at=r["updated_at"],
+        )
+        for r in rows
+    ]

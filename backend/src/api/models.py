@@ -12,6 +12,15 @@ class CampaignCreate(BaseModel):
     scheduled_start_at: Optional[str] = None
 
 
+class AttachedDocument(BaseModel):
+    id: str
+    name: str
+    size_bytes: Optional[int] = None
+    extension: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
 class CampaignResponse(BaseModel):
     id: str
     user_id: Optional[str] = None
@@ -23,16 +32,9 @@ class CampaignResponse(BaseModel):
     max_follow_ups: int
     status: str
     scheduled_start_at: Optional[datetime] = None
-    product_context: Optional[str] = None
-    product_document_name: Optional[str] = None
+    documents: List[AttachedDocument] = []
     created_at: datetime
     updated_at: datetime
-
-
-class ProductDocumentResponse(BaseModel):
-    document_name: str
-    brief: str
-    word_count: int
 
 # Request/Response models for leads
 class LeadCreate(BaseModel):

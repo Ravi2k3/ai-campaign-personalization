@@ -33,7 +33,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Send, MailPlus, LogOut, ChevronsUpDown, Moon, Sun, Plus } from "lucide-react"
+import { Send, MailPlus, LogOut, ChevronsUpDown, Moon, Sun, Plus, FileText } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -87,6 +87,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                         <Link to="/">
                                             <MailPlus className="size-4" />
                                             <span>Campaigns</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={location.pathname.startsWith("/documents")}
+                                    >
+                                        <Link to="/documents">
+                                            <FileText className="size-4" />
+                                            <span>Documents</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>

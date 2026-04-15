@@ -100,7 +100,6 @@ def _get_eligible_leads() -> List[Dict[str, Any]]:
                 c.sender_name,
                 c.sender_email,
                 c.goal,
-                c.product_context,
                 c.follow_up_delay_minutes,
                 c.max_follow_ups,
                 u.id as user_id,
@@ -246,6 +245,44 @@ def _get_previous_emails_batch(
             result[lid].append(em)
 
     return result
+
+
+def _get_product_context_by_campaign(campaign_ids: List[str]) -> Dict[str, Optional[str]]:
+    """
+    Build the product-context string for each campaign by concatenating
+    the briefs of its attached documents. Fetched once per send batch so
+    leads sharing a campaign don't re-run the query.
+    """
+    if not campaign_ids:
+        return {}
+
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT cd.campaign_id, d.name, d.brief
+            FROM campaign_documents cd
+            JOIN documents d ON cd.document_id = d.id
+            WHERE cd.campaign_id = ANY(%s::uuid[])
+            ORDER BY cd.campaign_id, cd.created_at ASC
+            """,
+            (campaign_ids,),
+        )
+        rows = cur.fetchall()
+
+    grouped: Dict[str, List[str]] = {}
+    for row in rows:
+        cid = str(row["campaign_id"])
+        brief = (row["brief"] or "").strip()
+        if not brief:
+            continue
+        grouped.setdefault(cid, []).append(
+            f"## Document: {row['name']}\n\n{brief}"
+        )
+
+    return {
+        cid: ("\n\n".join(parts) if parts else None)
+        for cid, parts in grouped.items()
+    } | {cid: None for cid in campaign_ids if cid not in grouped}
 
 
 # ── Record & Update ─────────────────────────────────────────────────────────
@@ -470,7 +507,10 @@ async def generate_email_for_lead(
         campaign_info = {
             "name": lead["campaign_name"],
             "goal": lead["goal"],
-            "product_context": lead.get("product_context"),
+            # Injected by the send batch via _get_product_context_by_campaign
+            # so every lead in the same campaign shares one context string
+            # without re-querying per lead.
+            "product_context": lead.get("_product_context"),
             "sender_name": lead["sender_name"],
             "sender_email": lead["sender_email"],
             "current_sequence": lead["current_sequence"] + 1,
@@ -674,8 +714,12 @@ async def process_leads_job() -> None:
 
         locked_leads = [l for l in leads if str(l["lead_id"]) in locked_ids]
 
-        # Step 4: Fetch previous emails for context
+        # Step 4: Fetch previous emails + per-campaign product context
         previous_emails_map = await run_sync(_get_previous_emails_batch, locked_ids)
+        unique_campaign_ids = list({str(l["campaign_id"]) for l in locked_leads})
+        product_context_map = await run_sync(
+            _get_product_context_by_campaign, unique_campaign_ids
+        )
 
         # Step 5: Generate emails concurrently
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_GENERATIONS)
@@ -683,6 +727,7 @@ async def process_leads_job() -> None:
         async def generate_with_semaphore(lead: Dict[str, Any]) -> Any:
             async with semaphore:
                 prev_emails = previous_emails_map.get(str(lead["lead_id"]), [])
+                lead["_product_context"] = product_context_map.get(str(lead["campaign_id"]))
                 return await generate_email_for_lead(lead, prev_emails)
 
         generation_results = await asyncio.gather(

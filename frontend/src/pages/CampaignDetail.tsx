@@ -29,7 +29,16 @@ import AddLeadModal from "@/components/AddLeadModal"
 import ImportCSVModal from "@/components/ImportCSVModal"
 import DeleteCampaignModal from "@/components/DeleteCampaignModal"
 import PreviewEmailModal from "@/components/PreviewEmailModal"
-import ProductDocumentCard from "@/components/ProductDocumentCard"
+import AttachedDocumentsCard from "@/components/AttachedDocumentsCard"
+
+type AttachedDoc = {
+    id: string
+    name: string
+    size_bytes: number | null
+    extension: string | null
+    created_at: string | null
+    updated_at: string | null
+}
 
 type Campaign = {
     id: string
@@ -41,8 +50,7 @@ type Campaign = {
     max_follow_ups: number
     status: string
     scheduled_start_at: string | null
-    product_context: string | null
-    product_document_name: string | null
+    documents: AttachedDoc[]
 }
 
 type CampaignStats = {
@@ -369,13 +377,12 @@ export default function CampaignDetail() {
                     </div>
                 )}
 
-                {/* ── Product Document ─────────────────────────────────── */}
+                {/* ── Attached documents ─────────────────────────────── */}
                 {!loading && campaign && !editing && (
-                    <ProductDocumentCard
+                    <AttachedDocumentsCard
                         campaignId={campaign.id}
                         canEdit={canEdit}
-                        documentName={campaign.product_document_name}
-                        brief={campaign.product_context}
+                        attached={campaign.documents || []}
                         onChange={fetchData}
                     />
                 )}

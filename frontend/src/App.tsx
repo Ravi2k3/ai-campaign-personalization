@@ -13,6 +13,7 @@ import Campaigns from "./pages/Campaigns"
 import CampaignCreate from "./pages/CampaignCreate"
 import CampaignDetail from "./pages/CampaignDetail"
 import LeadDetail from "./pages/LeadDetail"
+import Documents from "./pages/Documents"
 import NotFound from "./pages/NotFound"
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/campaigns/new" element={<ProtectedLayout><CampaignCreate /></ProtectedLayout>} />
               <Route path="/campaigns/:id" element={<ProtectedLayout><CampaignDetail /></ProtectedLayout>} />
               <Route path="/campaigns/:campaignId/leads/:leadId" element={<ProtectedLayout><LeadDetail /></ProtectedLayout>} />
+              <Route path="/documents" element={<ProtectedLayout><Documents /></ProtectedLayout>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any, List
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -14,9 +14,72 @@ router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 _CAMPAIGN_COLS = """
     id, user_id, name, sender_name, sender_email, goal,
     follow_up_delay_minutes, max_follow_ups, status,
-    scheduled_start_at, product_context, product_document_name,
-    created_at, updated_at
+    scheduled_start_at, created_at, updated_at
 """
+
+
+def _fetch_documents_for_campaigns(cur: Any, campaign_ids: list[str]) -> dict[str, list[dict]]:
+    """
+    Return a mapping of campaign_id -> [document summary dicts] ordered by
+    attachment time. Small second query keeps the campaign SELECT simple
+    and avoids JSON aggregation edge cases.
+    """
+    if not campaign_ids:
+        return {}
+    cur.execute(
+        """
+        SELECT cd.campaign_id,
+               d.id, d.name, d.size_bytes, d.extension,
+               d.created_at, d.updated_at
+        FROM campaign_documents cd
+        JOIN documents d ON cd.document_id = d.id
+        WHERE cd.campaign_id = ANY(%s::uuid[])
+        ORDER BY cd.campaign_id, cd.created_at ASC
+        """,
+        (campaign_ids,),
+    )
+    out: dict[str, list[dict]] = {}
+    for row in cur.fetchall():
+        cid = str(row["campaign_id"])
+        out.setdefault(cid, []).append({
+            "id": str(row["id"]),
+            "name": row["name"],
+            "size_bytes": row["size_bytes"],
+            "extension": row["extension"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        })
+    return out
+
+
+def _attach_documents(cur: Any, campaigns: list[dict]) -> list[dict]:
+    """Annotate each campaign dict with its `documents` array in place."""
+    ids = [str(c["id"]) for c in campaigns]
+    by_id = _fetch_documents_for_campaigns(cur, ids)
+    for c in campaigns:
+        c["documents"] = by_id.get(str(c["id"]), [])
+    return campaigns
+
+
+def _build_product_context(docs: list[dict]) -> Optional[str]:
+    """
+    Concatenate attached document briefs into a single product-context block
+    the LLM will consume during email generation. Returns None when no docs
+    are attached, so the prompt can render a clean fallback instead of an
+    empty section.
+    """
+    if not docs:
+        return None
+    parts: list[str] = []
+    for d in docs:
+        name = d.get("name") or "Untitled"
+        brief = d.get("brief") or ""
+        if not brief.strip():
+            continue
+        parts.append(f"## Document: {name}\n\n{brief.strip()}")
+    if not parts:
+        return None
+    return "\n\n".join(parts)
 
 
 @router.get("", response_model=List[CampaignResponse])
@@ -26,7 +89,8 @@ async def list_campaigns(user: dict[str, Any] = Depends(get_current_user)):
             f"SELECT {_CAMPAIGN_COLS} FROM campaigns WHERE user_id = %s ORDER BY created_at DESC",
             (user["id"],),
         )
-        campaigns = cur.fetchall()
+        campaigns = [dict(row) for row in cur.fetchall()]
+        _attach_documents(cur, campaigns)
     return campaigns
 
 
@@ -72,11 +136,11 @@ async def get_campaign(
             f"SELECT {_CAMPAIGN_COLS} FROM campaigns WHERE id = %s AND user_id = %s",
             (campaign_id, user["id"]),
         )
-        campaign = cur.fetchone()
-
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        campaign = dict(row)
+        _attach_documents(cur, [campaign])
     return campaign
 
 
@@ -204,6 +268,19 @@ async def preview_email(
         )
         previous_emails = cur.fetchall()
 
+        # Fetch attached document briefs (may be empty)
+        cur.execute(
+            """
+            SELECT d.name, d.brief
+            FROM campaign_documents cd
+            JOIN documents d ON cd.document_id = d.id
+            WHERE cd.campaign_id = %s
+            ORDER BY cd.created_at ASC
+            """,
+            (campaign_id,),
+        )
+        attached_docs = cur.fetchall()
+
     from ..mail.agent import generate_mail
 
     user_info = {
@@ -218,7 +295,7 @@ async def preview_email(
     campaign_info = {
         "name": campaign["name"],
         "goal": campaign["goal"],
-        "product_context": campaign.get("product_context"),
+        "product_context": _build_product_context(attached_docs),
         "sender_name": campaign["sender_name"],
         "sender_email": campaign["sender_email"],
         "current_sequence": lead["current_sequence"] + 1,

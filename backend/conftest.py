@@ -185,14 +185,49 @@ def test_db() -> Generator[None, None, None]:
     Initialize test database: create pool, tables, and migrations.
     Also overrides the app lifespan so TestClient doesn't call init_pool/close_pool
     (which would destroy the pool managed here).
+
+    Installs a single, session-scoped auth override that resolves the caller
+    from a per-request header (X-Test-User-Id). This lets multiple client
+    fixtures coexist in the same test — each TestClient sets its own header
+    and the override looks up that user. The previous design had each client
+    fixture install its own override into the same dependency slot, which
+    meant whichever ran later clobbered the earlier one — fine for single-
+    client tests, broken for cross-tenant tests.
     """
     from contextlib import asynccontextmanager
+    from fastapi import HTTPException, Request
 
     @asynccontextmanager
     async def _test_lifespan(app_instance):  # type: ignore
         yield  # No-op: pool is managed by this fixture, not the app
 
     app.router.lifespan_context = _test_lifespan
+
+    async def _resolve_test_user(request: Request) -> dict[str, Any]:
+        """
+        Reads X-Test-User-Id from the request and loads that user's row
+        directly from the test DB. Tests set this header via the
+        TestClient's default headers (see the client fixture).
+        """
+        user_id = request.headers.get("X-Test-User-Id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Missing X-Test-User-Id (test config error)")
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT id, email, name, picture_url FROM users WHERE id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="Test user not found")
+        return {
+            "id": str(row["id"]),
+            "email": row["email"],
+            "name": row["name"],
+            "picture_url": row["picture_url"],
+        }
+
+    app.dependency_overrides[get_current_user] = _resolve_test_user
 
     init_pool()
     init_db()
@@ -208,6 +243,7 @@ def test_db() -> Generator[None, None, None]:
             DROP TABLE IF EXISTS schema_migrations CASCADE;
             """
         )
+    app.dependency_overrides.pop(get_current_user, None)
     close_pool()
 
 
@@ -277,32 +313,33 @@ class _PrefixedTestClient:
         return self._client.request(method, self._prefix(url), **kwargs)
 
 
-@pytest.fixture()
-def client(test_user: dict[str, Any]):
-    """FastAPI TestClient authenticated as test_user. Auto-prefixes /api to paths."""
+def _make_client(user_id: str) -> Any:
+    """
+    Build an authenticated TestClient that tags every request with the
+    X-Test-User-Id header. The session-scoped auth override in test_db
+    resolves that header to the real user row, so multiple clients can
+    coexist in the same test (cross-tenant cases) without fighting over
+    a single dependency-override slot.
+    """
     from fastapi.testclient import TestClient
 
-    async def override_auth():
-        return test_user
+    c = TestClient(app)
+    c.headers["X-Test-User-Id"] = user_id
+    return c
 
-    app.dependency_overrides[get_current_user] = override_auth
-    with TestClient(app) as c:
+
+@pytest.fixture()
+def client(test_user: dict[str, Any]):
+    """TestClient authenticated as test_user. Auto-prefixes /api to paths."""
+    with _make_client(test_user["id"]) as c:
         yield _PrefixedTestClient(c)
-    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture()
 def client_user2(second_user: dict[str, Any]):
-    """FastAPI TestClient authenticated as second_user. Auto-prefixes /api to paths."""
-    from fastapi.testclient import TestClient
-
-    async def override_auth():
-        return second_user
-
-    app.dependency_overrides[get_current_user] = override_auth
-    with TestClient(app) as c:
+    """TestClient authenticated as second_user. Auto-prefixes /api to paths."""
+    with _make_client(second_user["id"]) as c:
         yield _PrefixedTestClient(c)
-    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture()

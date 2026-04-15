@@ -145,6 +145,56 @@ MIGRATIONS: list[tuple[int, str, str]] = [
         ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS product_context TEXT;
         ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS product_document_name TEXT;
     """),
+    (7, "Create account-wide documents library", """
+        CREATE TABLE IF NOT EXISTS documents (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            brief TEXT NOT NULL,
+            size_bytes INTEGER,
+            extension TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
+
+        CREATE TABLE IF NOT EXISTS campaign_documents (
+            campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+            document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (campaign_id, document_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_campaign_documents_document_id ON campaign_documents(document_id);
+    """),
+    (8, "Move existing campaign product_context into documents library", """
+        DO $$
+        DECLARE
+            c RECORD;
+            new_doc_id UUID;
+        BEGIN
+            FOR c IN
+                SELECT id, user_id, product_context, product_document_name
+                FROM campaigns
+                WHERE product_context IS NOT NULL
+                  AND user_id IS NOT NULL
+            LOOP
+                INSERT INTO documents (user_id, name, brief)
+                VALUES (
+                    c.user_id,
+                    COALESCE(c.product_document_name, 'Untitled'),
+                    c.product_context
+                )
+                RETURNING id INTO new_doc_id;
+
+                INSERT INTO campaign_documents (campaign_id, document_id)
+                VALUES (c.id, new_doc_id);
+            END LOOP;
+        END $$;
+    """),
+    (9, "Drop per-campaign product columns (replaced by documents library)", """
+        ALTER TABLE campaigns DROP COLUMN IF EXISTS product_context;
+        ALTER TABLE campaigns DROP COLUMN IF EXISTS product_document_name;
+    """),
 ]
 
 
