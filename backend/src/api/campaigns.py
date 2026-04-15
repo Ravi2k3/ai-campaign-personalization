@@ -34,6 +34,10 @@ async def create_campaign(
     campaign: CampaignCreate,
     user: dict[str, Any] = Depends(get_current_user),
 ):
+    # Frontend sends empty string when the date picker is untouched; Postgres
+    # cannot coerce "" to TIMESTAMPTZ, so normalise to NULL here.
+    scheduled_start_at = campaign.scheduled_start_at if campaign.scheduled_start_at else None
+
     with get_cursor(commit=True) as cur:
         cur.execute(
             f"""
@@ -50,7 +54,7 @@ async def create_campaign(
                 campaign.goal,
                 campaign.follow_up_delay_minutes,
                 campaign.max_follow_ups,
-                campaign.scheduled_start_at,
+                scheduled_start_at,
             ),
         )
         new_campaign = cur.fetchone()

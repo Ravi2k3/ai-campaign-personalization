@@ -17,7 +17,8 @@
       "Bash(npx shadcn@latest init --preset)",
       "Bash(npx shadcn@latest init --preset radix-mira -f --reinstall)",
       "Bash(npx shadcn@latest init --preset mira -f --reinstall)",
-      "Bash(wsl bash:*)"
+      "Bash(wsl bash:*)",
+      "WebFetch(domain:www.lakshmivacuum.com)"
     ]
   }
 }

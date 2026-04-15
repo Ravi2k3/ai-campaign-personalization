@@ -29,6 +29,33 @@ class TestCampaignCRUD:
         })
         assert resp.status_code == 422
 
+    def test_create_campaign_with_empty_scheduled_start_at(self, client, test_user):
+        """
+        Regression: the frontend sends scheduled_start_at="" when the date
+        picker is untouched. Postgres cannot coerce that to TIMESTAMPTZ, so
+        the backend must normalise empty strings to NULL before inserting.
+        """
+        resp = client.post("/campaigns", json={
+            "name": "Untouched Schedule",
+            "sender_name": "John",
+            "goal": "test",
+            "scheduled_start_at": "",
+        })
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["scheduled_start_at"] is None
+
+    def test_create_campaign_with_valid_scheduled_start_at(self, client, test_user):
+        """When the date picker IS used, the value should round-trip correctly."""
+        scheduled = "2026-12-01T09:00:00+00:00"
+        resp = client.post("/campaigns", json={
+            "name": "Scheduled Campaign",
+            "sender_name": "John",
+            "goal": "test",
+            "scheduled_start_at": scheduled,
+        })
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["scheduled_start_at"] is not None
+
     def test_list_campaigns_empty(self, client):
         resp = client.get("/campaigns")
         assert resp.status_code == 200
