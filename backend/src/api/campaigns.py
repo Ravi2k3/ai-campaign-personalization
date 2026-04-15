@@ -225,7 +225,18 @@ async def preview_email(
 
     try:
         result = await generate_mail(user_info, campaign_info, list(previous_emails))
-        return EmailPreviewResponse(subject=result.subject, body=result.body)
+        subject = result.subject
+
+        # Mirror scheduler threading: follow-ups go out as "Re: <first subject>".
+        # The preview should show exactly what will hit the inbox.
+        if previous_emails:
+            original_subject = previous_emails[0]["subject"]
+            if original_subject and not original_subject.lower().startswith("re:"):
+                subject = f"Re: {original_subject}"
+            else:
+                subject = original_subject
+
+        return EmailPreviewResponse(subject=subject, body=result.body)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate preview: {str(e)}")
 

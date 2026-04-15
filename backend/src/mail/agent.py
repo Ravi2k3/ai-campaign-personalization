@@ -75,6 +75,18 @@ If the recipient's notes field contains specific facts (triggers, deals, product
 
 The subject must reference a specific trigger, capability, product, or fact tied to this recipient or their situation. Generic subjects (e.g. "Quick question about [Company]", "Connecting with [Company]", "[Your Solution] for [Company]") are not acceptable. Under 70 characters.
 
+## Follow-ups
+
+When previous emails exist, the next one is a follow-up, not a rewrite. Hard rules:
+
+- **Introduce a genuinely new angle.** The first email led with one hook (e.g. a trigger, pain point, or proof point). The follow-up must lead with a different one. If email #1 opened on export growth and NADCAP, email #2 should open on IP leakage, supply-chain brittleness, or a specific technical detail (e.g. 500kg sizing) — not the same angle rephrased.
+- **Shorter than the previous.** Each follow-up should be measurably shorter than the one before. Email #2 is tighter than #1. Email #3 is tighter than #2. The final follow-up is typically a short "closing the loop" break-up.
+- **Reference that a prior email exists, lightly.** One brief acknowledgement at the start is fine ("circling back on my note from last week", "quick follow-up on my earlier message"). Do not re-introduce yourself or your company.
+- **Evolve the ask.** If the prior email pushed the main CTA, the follow-up may offer a lower-commitment alternative (send a one-pager, suggest a shorter call, ask a single qualifying question) while keeping the overall goal intact.
+- **Do not repeat proof points from earlier emails.** If you cited '22 years, 350+ furnaces' in email #1, pick different substance for email #2 (a different customer, a different capability, a different credential).
+- **A follow-up that is a paraphrase of the prior email is a failure.** Anyone reading both back-to-back should immediately see that email #2 is adding something new, not restating email #1.
+- **Subject line:** generate a fresh, specific subject. The system will automatically prepend "Re: " and re-use the original thread's subject at send time to keep Gmail threading intact. You do not need to add "Re:" yourself.
+
 ## Universally banned patterns
 
 Independent of tone, the following are dead-giveaway template signals. Never use them in any form:
@@ -129,8 +141,8 @@ Then extract from the recipient data:
 
 Now write:
 - If this is the first email, open with something tied to (5) or a concrete trigger from (4). Do not open with a weather-report pleasantry.
-- If this is a follow-up, open with a different angle than previous emails. Do not repeat the same hook or greeting.
-- Keep the body tight. Hit the CTA from (2) verbatim in intent — do not improvise a different ask.
+- If this is a follow-up, read the prior emails carefully. Identify which hooks, proof points, and phrasings have already been used. Your follow-up must lead with a DIFFERENT angle and cite DIFFERENT proof points (if any are cited at all). It must be measurably shorter than the prior email. Generate a fresh subject — the system handles "Re: " threading automatically at send time.
+- Keep the body tight. Hit the CTA from (2) verbatim in intent — do not improvise a different ask. A follow-up may offer a softer alternative path to the same goal (e.g. a one-pager instead of a call), but must not substitute a new goal.
 - Subject line must be specific to this recipient, not a template.
 
 ## Self-check before returning
@@ -143,6 +155,12 @@ Walk through this checklist. If any answer is "no", rewrite:
 - Is my CTA a faithful match for what the goal asked for?
 - Would this email survive copy-paste to a different recipient? If yes, it's too generic — rewrite.
 - Did I use any universally banned pattern from the role instructions? If yes, rewrite.
+
+If this is a follow-up, also check:
+- Is my opening angle genuinely different from the prior email's opening angle? (Not the same hook rephrased.)
+- Did I cite DIFFERENT proof points than the prior email, or none at all?
+- Is my email measurably shorter than the prior email?
+- Read my draft side-by-side with the prior email. Would a reader immediately see that this one adds something new? If it reads like a paraphrase, rewrite.
 
 Generate the email now.
 """)
