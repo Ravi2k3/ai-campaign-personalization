@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import {
     Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import { FileText, Plus, X, Check, AlertCircle } from "lucide-react"
+import { FileText, Plus, X, Check, AlertCircle, ArrowUpRight } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const MAX_PER_CAMPAIGN = 2
@@ -136,9 +136,15 @@ export default function AttachedDocumentsCard({
             ) : (
                 <div className="space-y-2">
                     {attached.map(doc => (
-                        <div key={doc.id} className="flex items-center gap-3 p-2.5 border rounded-lg bg-muted/20">
+                        <div key={doc.id} className="group flex items-center gap-3 p-2.5 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
                             <FileText size={14} className="text-primary shrink-0" />
-                            <p className="text-[13px] font-medium truncate flex-1">{doc.name}</p>
+                            <Link
+                                to={`/documents/${doc.id}`}
+                                className="text-[13px] font-medium truncate flex-1 hover:text-primary transition-colors inline-flex items-center gap-1.5"
+                            >
+                                {doc.name}
+                                <ArrowUpRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </Link>
                             {canEdit && (
                                 <Button
                                     size="sm"

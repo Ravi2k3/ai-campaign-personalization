@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { Link } from "react-router-dom"
 import { get, del, API_URL } from "@/lib/api"
 import { parseApiError } from "@/lib/errors"
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext"
@@ -6,10 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
-import { FileText, Upload, Trash2, Eye, AlertCircle } from "lucide-react"
+import { FileText, Upload, Trash2, ArrowUpRight, AlertCircle } from "lucide-react"
 
 type DocumentSummary = {
     id: string
@@ -18,11 +16,6 @@ type DocumentSummary = {
     extension: string | null
     created_at: string
     updated_at: string
-}
-
-type DocumentDetail = DocumentSummary & {
-    brief: string
-    word_count: number
 }
 
 const ACCEPT = ".pdf,.docx,.pptx,.txt,.md"
@@ -49,9 +42,6 @@ export default function Documents() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
-
-    const [previewDoc, setPreviewDoc] = useState<DocumentDetail | null>(null)
-    const [previewLoading, setPreviewLoading] = useState(false)
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -131,7 +121,9 @@ export default function Documents() {
         if (fileInputRef.current) fileInputRef.current.value = ""
     }
 
-    const handleDelete = async (doc: DocumentSummary) => {
+    const handleDelete = async (doc: DocumentSummary, e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
         if (!confirm(`Delete "${doc.name}"? Any campaign using it will lose the attachment.`)) return
         try {
             await del(`/documents/${doc.id}`)
@@ -139,20 +131,6 @@ export default function Documents() {
             await fetchDocs()
         } catch (err) {
             toast.error(parseApiError(err))
-        }
-    }
-
-    const openPreview = async (doc: DocumentSummary) => {
-        setPreviewLoading(true)
-        setPreviewDoc({ ...doc, brief: "", word_count: 0 })
-        try {
-            const full = await get<DocumentDetail>(`/documents/${doc.id}`)
-            setPreviewDoc(full)
-        } catch (err) {
-            toast.error(parseApiError(err))
-            setPreviewDoc(null)
-        } finally {
-            setPreviewLoading(false)
         }
     }
 
@@ -220,58 +198,38 @@ export default function Documents() {
                     ) : (
                         <div className="space-y-2">
                             {docs.map(doc => (
-                                <div key={doc.id} className="bg-card border rounded-xl p-4 flex items-center gap-3">
+                                <Link
+                                    key={doc.id}
+                                    to={`/documents/${doc.id}`}
+                                    className="group bg-card border rounded-xl p-4 flex items-center gap-3 transition-colors hover:bg-accent/30 hover:border-primary/30"
+                                >
                                     <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                                         <FileText size={16} className="text-primary" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-[13px] font-medium truncate">{doc.name}</p>
+                                        <p className="text-[13px] font-medium truncate flex items-center gap-1.5 group-hover:text-primary transition-colors">
+                                            {doc.name}
+                                            <ArrowUpRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </p>
                                         <p className="text-[11px] text-muted-foreground">
                                             {formatSize(doc.size_bytes)} · Uploaded {formatDate(doc.created_at)}
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <Button size="sm" variant="ghost" onClick={() => openPreview(doc)} className="gap-1.5">
-                                            <Eye size={13} />
-                                            Preview brief
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => handleDelete(doc)}
-                                            className="text-destructive hover:text-destructive"
-                                        >
-                                            <Trash2 size={13} />
-                                        </Button>
-                                    </div>
-                                </div>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={(e) => handleDelete(doc, e)}
+                                        className="text-muted-foreground hover:text-destructive"
+                                        aria-label={`Delete ${doc.name}`}
+                                    >
+                                        <Trash2 size={13} />
+                                    </Button>
+                                </Link>
                             ))}
                         </div>
                     )}
                 </div>
 
-                {/* Preview dialog */}
-                <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle className="truncate">{previewDoc?.name}</DialogTitle>
-                            <DialogDescription>
-                                This is the brief the LLM consults when personalizing every email for campaigns that attach this document.
-                            </DialogDescription>
-                        </DialogHeader>
-                        {previewLoading ? (
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-3/4" />
-                            </div>
-                        ) : previewDoc?.brief ? (
-                            <div className="text-[13px] leading-relaxed whitespace-pre-wrap font-mono bg-muted/30 p-4 rounded-lg border">
-                                {previewDoc.brief}
-                            </div>
-                        ) : null}
-                    </DialogContent>
-                </Dialog>
             </div>
         </div>
     )
