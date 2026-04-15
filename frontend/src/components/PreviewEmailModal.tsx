@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { post } from "@/lib/api"
 import { parseApiError } from "@/lib/errors"
 import { toast } from "sonner"
@@ -10,6 +10,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Eye, RefreshCw } from "lucide-react"
 
@@ -36,9 +43,25 @@ export default function PreviewEmailModal({
     campaignId: string
     leads: Lead[]
 }) {
-    const [selectedLeadId, setSelectedLeadId] = useState<string>(leads[0]?.id || "")
+    const [selectedLeadId, setSelectedLeadId] = useState<string>("")
     const [preview, setPreview] = useState<PreviewResult | null>(null)
     const [loading, setLoading] = useState(false)
+
+    // Sync the selected lead whenever the modal opens or the leads list changes.
+    // Using useState's initializer alone misses the case where:
+    //   - the modal mounts before leads load,
+    //   - the parent keeps the modal mounted while leads change,
+    //   - the list has exactly one lead (the native <select> never fires
+    //     onChange so we never picked it up on our own).
+    useEffect(() => {
+        if (!open) return
+        // If the current selection is not in the list anymore, fall back to the first lead.
+        const stillPresent = leads.some(l => l.id === selectedLeadId)
+        if (!stillPresent) {
+            setSelectedLeadId(leads[0]?.id ?? "")
+            setPreview(null)
+        }
+    }, [open, leads, selectedLeadId])
 
     const handleGenerate = async () => {
         if (!selectedLeadId) return
@@ -57,10 +80,21 @@ export default function PreviewEmailModal({
         }
     }
 
+    const handleLeadChange = (value: string) => {
+        setSelectedLeadId(value)
+        setPreview(null)
+    }
+
+    const handleClose = () => {
+        onClose()
+        setPreview(null)
+    }
+
     const selectedLead = leads.find(l => l.id === selectedLeadId)
+    const canGenerate = !!selectedLeadId && !loading
 
     return (
-        <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) { onClose(); setPreview(null) } }}>
+        <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose() }}>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Preview Email</DialogTitle>
@@ -73,22 +107,24 @@ export default function PreviewEmailModal({
                     {/* Lead selector */}
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium">Select a lead</label>
-                        <select
-                            value={selectedLeadId}
-                            onChange={(e) => { setSelectedLeadId(e.target.value); setPreview(null) }}
-                            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                            {leads.map(lead => (
-                                <option key={lead.id} value={lead.id}>
-                                    {lead.first_name} {lead.last_name} ({lead.email})
-                                </option>
-                            ))}
-                        </select>
+                        <Select value={selectedLeadId} onValueChange={handleLeadChange}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Pick a lead" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {leads.map(lead => (
+                                    <SelectItem key={lead.id} value={lead.id}>
+                                        {lead.first_name} {lead.last_name}{" "}
+                                        <span className="text-muted-foreground">({lead.email})</span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <Button
                         onClick={handleGenerate}
-                        disabled={loading || !selectedLeadId}
+                        disabled={!canGenerate}
                         className="gap-2"
                         size="sm"
                     >
@@ -110,7 +146,6 @@ export default function PreviewEmailModal({
                         )}
                     </Button>
 
-                    {/* Preview result */}
                     {loading && (
                         <div className="space-y-3 border rounded-lg p-4">
                             <Skeleton className="h-5 w-3/4" />
@@ -136,7 +171,9 @@ export default function PreviewEmailModal({
                     {!preview && !loading && (
                         <div className="text-center py-8 border border-dashed rounded-lg">
                             <p className="text-sm text-muted-foreground">
-                                Select a lead and click "Generate Preview" to see a sample email.
+                                {selectedLeadId
+                                    ? "Click \"Generate Preview\" to see a sample email."
+                                    : "Select a lead to preview."}
                             </p>
                         </div>
                     )}
