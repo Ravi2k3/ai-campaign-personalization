@@ -24,6 +24,7 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
     DropdownMenu,
@@ -32,7 +33,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Send, MailPlus, LogOut, ChevronsUpDown, Moon, Sun } from "lucide-react"
+import { Send, MailPlus, LogOut, ChevronsUpDown, Moon, Sun, Plus } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -67,11 +68,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarContent>
                     <SidebarGroup>
                         <SidebarGroupContent>
+                            <Button asChild size="sm" className="w-full justify-start gap-2 h-9">
+                                <Link to="/campaigns/new">
+                                    <Plus className="size-4" />
+                                    New campaign
+                                </Link>
+                            </Button>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                    <SidebarGroup>
+                        <SidebarGroupContent>
                             <SidebarMenu>
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         asChild
-                                        isActive={location.pathname === "/" || location.pathname.startsWith("/campaigns")}
+                                        isActive={location.pathname === "/" || (location.pathname.startsWith("/campaigns") && location.pathname !== "/campaigns/new")}
                                     >
                                         <Link to="/">
                                             <MailPlus className="size-4" />

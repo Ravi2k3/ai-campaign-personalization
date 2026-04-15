@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
-    ArrowLeft, CalendarIcon, X, Info, Mail, Timer, Target, Clock,
+    CalendarIcon, X, Info, Mail, Timer, Target, Clock,
 } from "lucide-react"
 
 type Campaign = { id: string; name: string }
@@ -299,15 +299,6 @@ export default function CampaignCreate() {
             <div className="max-w-5xl mx-auto space-y-5">
                 {/* Header */}
                 <div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate("/")}
-                        className="gap-1.5 -ml-2 mb-2 text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft size={14} />
-                        Campaigns
-                    </Button>
                     <h1 className="text-2xl font-semibold tracking-tight">New campaign</h1>
                     <p className="text-muted-foreground text-[13px] mt-1">
                         Configure the outreach. Add leads after it's created.
