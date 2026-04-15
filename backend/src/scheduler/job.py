@@ -502,6 +502,24 @@ def _build_imap_xoauth2(user_email: str, access_token: str) -> bytes:
     return f"user={user_email}\x01auth=Bearer {access_token}\x01\x01".encode()
 
 
+def _get_lead_earliest_sent_map(lead_ids: list[str]) -> dict[str, datetime]:
+    """Return earliest sent_at per lead_id for the given lead_ids."""
+    if not lead_ids:
+        return {}
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT lead_id, MIN(sent_at) AS earliest_sent_at
+            FROM emails
+            WHERE lead_id = ANY(%s::uuid[]) AND status = 'sent'
+            GROUP BY lead_id
+            """,
+            (lead_ids,),
+        )
+        rows = cur.fetchall()
+    return {str(row["lead_id"]): row["earliest_sent_at"] for row in rows}
+
+
 def _targeted_reply_check(
     user_id: str,
     user_email: str,
@@ -513,13 +531,21 @@ def _targeted_reply_check(
     Called right before sending follow-ups to a user. Only searches for emails from
     the leads we're about to send to, not the entire inbox.
 
-    Much cheaper than a full inbox scan: one IMAP connection, one targeted search.
+    Guards against stale matches: an email from a lead dated BEFORE we first
+    sent them anything cannot be a reply to anything we sent. Without this
+    guard, old replies from previous campaigns (where the same address appeared
+    as a lead) would taint a new campaign's leads.
+
     Returns set of lead_ids that have replied.
     """
     if not lead_emails:
         return set()
 
     replied_lead_ids: set[str] = set()
+
+    # Earliest sent timestamps for the leads we're about to check. If a lead
+    # has no sent email at all, there is nothing a reply could be a response to.
+    earliest_sent = _get_lead_earliest_sent_map(list(lead_email_to_id.values()))
 
     try:
         access_token = get_valid_access_token(user_id)
@@ -547,15 +573,38 @@ def _targeted_reply_check(
                         if isinstance(part, tuple) and b"HEADER" in part[0]:
                             msg = email.message_from_bytes(part[1])
                             from_addr = email.utils.parseaddr(msg.get("From", ""))[1].lower()
-                            if from_addr in lead_email_to_id:
-                                lead_id = lead_email_to_id[from_addr]
-                                replied_lead_ids.add(lead_id)
-                                mark_lead_replied(
-                                    lead_id=lead_id,
-                                    subject=msg.get("Subject", ""),
-                                    reply_content="(detected pre-send)",
-                                    gmail_message_id=msg.get("Message-ID", ""),
+                            if from_addr not in lead_email_to_id:
+                                continue
+
+                            lead_id = lead_email_to_id[from_addr]
+                            lead_earliest = earliest_sent.get(lead_id)
+                            if not lead_earliest:
+                                # Never sent anything to this lead — any "reply"
+                                # is necessarily unrelated to this campaign.
+                                continue
+
+                            reply_date: Optional[datetime] = None
+                            date_header = msg.get("Date", "")
+                            if date_header:
+                                try:
+                                    reply_date = email.utils.parsedate_to_datetime(date_header)
+                                except (TypeError, ValueError):
+                                    reply_date = None
+
+                            if not reply_date or reply_date < lead_earliest:
+                                logger.info(
+                                    f"[CRON] Skipping stale sender-match for lead {lead_id}: "
+                                    f"reply_date={reply_date}, earliest_sent={lead_earliest}"
                                 )
+                                continue
+
+                            replied_lead_ids.add(lead_id)
+                            mark_lead_replied(
+                                lead_id=lead_id,
+                                subject=msg.get("Subject", ""),
+                                reply_content="(detected pre-send)",
+                                gmail_message_id=msg.get("Message-ID", ""),
+                            )
         finally:
             imap_conn.logout()
 

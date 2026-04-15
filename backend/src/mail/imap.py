@@ -130,6 +130,31 @@ def _get_lead_emails_for_user(user_id: str) -> dict[str, list[dict]]:
     return lead_map
 
 
+def _get_lead_earliest_sent(user_id: str) -> dict[str, datetime]:
+    """
+    For every lead in the user's active campaigns, return the earliest
+    timestamp at which we sent them an email (status='sent').
+
+    Used to guard against cross-campaign reply pollution when the sender-
+    email fallback is the only match: a reply dated before we ever sent
+    anything to this lead cannot be a response to anything we sent.
+    """
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT l.id AS lead_id, MIN(e.sent_at) AS earliest_sent_at
+            FROM leads l
+            JOIN campaigns c ON l.campaign_id = c.id
+            JOIN emails e ON e.lead_id = l.id AND e.status = 'sent'
+            WHERE c.user_id = %s AND c.status = 'active'
+            GROUP BY l.id
+            """,
+            (user_id,),
+        )
+        rows = cur.fetchall()
+    return {str(row["lead_id"]): row["earliest_sent_at"] for row in rows}
+
+
 def _get_earliest_campaign_start(user_id: str) -> Optional[datetime]:
     """Get the earliest active campaign start date to scope the IMAP search."""
     with get_cursor() as cur:
@@ -162,6 +187,10 @@ def check_replies_for_user(user_id: str, user_email: str) -> list[dict]:
     earliest_start = _get_earliest_campaign_start(user_id)
     if not earliest_start:
         return []
+
+    # Per-lead earliest sent timestamp. Sender-fallback matches that predate
+    # the earliest sent email for the matched lead are rejected as stale.
+    lead_earliest_sent = _get_lead_earliest_sent(user_id)
 
     # Search IMAP since a day before earliest campaign start
     since_date = (earliest_start - timedelta(days=1)).strftime("%d-%b-%Y")
@@ -232,6 +261,13 @@ def check_replies_for_user(user_id: str, user_email: str) -> list[dict]:
             from_addr = email.utils.parseaddr(msg.get("From", ""))[1].lower()
             subject = _decode_header_value(msg.get("Subject"))
             gmail_message_id = msg.get("Message-ID", "").strip()
+            reply_date_header = msg.get("Date", "")
+            reply_date: Optional[datetime] = None
+            if reply_date_header:
+                try:
+                    reply_date = email.utils.parsedate_to_datetime(reply_date_header)
+                except (TypeError, ValueError):
+                    reply_date = None
 
             # Match by In-Reply-To header
             matched_lead = sent_msg_lookup.get(in_reply_to)
@@ -243,12 +279,24 @@ def check_replies_for_user(user_id: str, user_email: str) -> list[dict]:
                     if matched_lead:
                         break
 
-            # Fallback: match by sender email if they're a known lead
+            # Fallback: match by sender email if they're a known lead.
+            # Guard: only accept this match if the reply is dated AFTER the
+            # earliest email we ever sent to this lead. This kills cross-
+            # campaign pollution where an old reply (from a prior campaign)
+            # still sits in the user's inbox.
             if not matched_lead and from_addr in lead_map and lead_map[from_addr]:
-                matched_lead = {
-                    "lead_id": lead_map[from_addr][0]["lead_id"],
-                    "lead_email": from_addr,
-                }
+                candidate_lead_id = lead_map[from_addr][0]["lead_id"]
+                earliest_sent = lead_earliest_sent.get(candidate_lead_id)
+                if earliest_sent and reply_date and reply_date >= earliest_sent:
+                    matched_lead = {
+                        "lead_id": candidate_lead_id,
+                        "lead_email": from_addr,
+                    }
+                else:
+                    logger.info(
+                        f"Skipping sender-fallback match for lead {candidate_lead_id}: "
+                        f"reply_date={reply_date}, earliest_sent={earliest_sent}"
+                    )
 
             if matched_lead:
                 body_text = _extract_clean_body(msg)
