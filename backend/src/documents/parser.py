@@ -73,9 +73,12 @@ async def parse_document(
             ) from e
 
         try:
+            # llama-cloud SDK v2.x made `version` a required kwarg.
+            # "latest" pins to whatever the API currently considers stable.
             result = await client.parsing.parse(
                 file_id=file_obj.id,
                 tier=tier,
+                version="latest",
                 expand=["markdown_full"],
             )
         except Exception as e:
