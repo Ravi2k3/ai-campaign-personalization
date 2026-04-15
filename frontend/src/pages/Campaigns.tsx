@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { get } from "@/lib/api"
 import { getCampaignStatus } from "@/lib/status"
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext"
@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, Mail, Users, AlertCircle, ArrowUpRight } from "lucide-react"
-import CreateCampaignModal from "@/components/CreateCampaignModal"
 
 type Campaign = {
     id: string
@@ -76,11 +75,11 @@ function CampaignSkeleton() {
 
 function CampaignContent({
     campaigns,
-    setShowModal,
+    onCreate,
     loading
 }: {
     campaigns: Campaign[]
-    setShowModal: (show: boolean) => void
+    onCreate: () => void
     loading: boolean
 }) {
     if (loading) {
@@ -99,7 +98,7 @@ function CampaignContent({
                 </div>
                 <p className="text-muted-foreground mb-1 text-sm">No campaigns yet</p>
                 <p className="text-muted-foreground/60 text-xs mb-6">Create your first campaign to get started.</p>
-                <Button onClick={() => setShowModal(true)} size="sm" className="gap-2">
+                <Button onClick={onCreate} size="sm" className="gap-2">
                     <Plus size={14} />
                     Create Campaign
                 </Button>
@@ -117,10 +116,10 @@ function CampaignContent({
 }
 
 export default function Campaigns() {
+    const navigate = useNavigate()
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [showModal, setShowModal] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
 
     useBreadcrumbs([{ label: "Campaigns" }])
@@ -154,10 +153,7 @@ export default function Campaigns() {
         )
     }, [campaigns, searchQuery])
 
-    const handleCampaignCreated = () => {
-        setShowModal(false)
-        fetchCampaigns()
-    }
+    const goToCreate = () => navigate("/campaigns/new")
 
     return (
         <div className="p-6 space-y-6">
@@ -166,7 +162,7 @@ export default function Campaigns() {
                     <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
                     <p className="text-muted-foreground text-sm">Manage your email outreach campaigns</p>
                 </div>
-                <Button onClick={() => setShowModal(true)} className="gap-2" size="sm">
+                <Button onClick={goToCreate} className="gap-2" size="sm">
                     <Plus size={14} />
                     Create Campaign
                 </Button>
@@ -190,16 +186,10 @@ export default function Campaigns() {
             ) : (
                 <CampaignContent
                     campaigns={filteredCampaigns}
-                    setShowModal={setShowModal}
+                    onCreate={goToCreate}
                     loading={loading}
                 />
             )}
-
-            <CreateCampaignModal
-                open={showModal}
-                onClose={() => setShowModal(false)}
-                onSuccess={handleCampaignCreated}
-            />
         </div>
     )
 }

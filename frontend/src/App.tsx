@@ -10,6 +10,7 @@ import AppLayout from "@/components/AppLayout"
 import Login from "./pages/Login"
 import AuthCallback from "./pages/AuthCallback"
 import Campaigns from "./pages/Campaigns"
+import CampaignCreate from "./pages/CampaignCreate"
 import CampaignDetail from "./pages/CampaignDetail"
 import LeadDetail from "./pages/LeadDetail"
 import NotFound from "./pages/NotFound"
@@ -36,6 +37,7 @@ export default function App() {
 
               {/* Protected routes with persistent layout */}
               <Route path="/" element={<ProtectedLayout><Campaigns /></ProtectedLayout>} />
+              <Route path="/campaigns/new" element={<ProtectedLayout><CampaignCreate /></ProtectedLayout>} />
               <Route path="/campaigns/:id" element={<ProtectedLayout><CampaignDetail /></ProtectedLayout>} />
               <Route path="/campaigns/:campaignId/leads/:leadId" element={<ProtectedLayout><LeadDetail /></ProtectedLayout>} />
 
